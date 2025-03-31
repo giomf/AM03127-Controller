@@ -1,34 +1,29 @@
 #![no_std]
 #![no_main]
+#![feature(impl_trait_in_assoc_type)]
+
+mod server;
 
 use embassy_executor::Spawner;
-use embassy_net::{Runner,  StackResources};
+use embassy_net::{Runner, StackResources};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
+use esp_backtrace as _;
 use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_backtrace as _;
 use esp_println::println;
 use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
+use picoserve::{AppBuilder, AppRouter, make_static};
+use server::{AppProps, web_task};
 
-// When you are okay with using a nightly compiler it's better to use https://docs.rs/static_cell/2.1.0/static_cell/macro.make_static.html
-macro_rules! mk_static {
-    ($t:ty,$val:expr) => {{
-        static STATIC_CELL: static_cell::StaticCell<$t> = static_cell::StaticCell::new();
-        #[deny(unused_attributes)]
-        let x = STATIC_CELL.uninit().write(($val));
-        x
-    }};
-}
-
-extern crate alloc;
+const WEB_TASK_POOL_SIZE: usize = 2;
+const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
-
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -41,7 +36,7 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
 
-    let esp_wifi_ctrl = &*mk_static!(
+    let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
         init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
     );
@@ -60,7 +55,7 @@ async fn main(spawner: Spawner) {
     let (network_stack, network_runner) = embassy_net::new(
         wifi_interface,
         config,
-        mk_static!(StackResources<3>, StackResources::<3>::new()),
+        make_static!(StackResources<STACK_RESSOURCE_SIZE>, StackResources::new()),
         seed,
     );
 
@@ -73,6 +68,20 @@ async fn main(spawner: Spawner) {
     match network_stack.config_v4() {
         Some(config) => println!("DHCP IP: {}", config.address),
         None => println!("Failed to receive DHCP IP address"),
+    }
+    let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
+    let config = make_static!(
+        picoserve::Config<Duration>,
+        picoserve::Config::new(picoserve::Timeouts {
+            start_read_request: Some(Duration::from_secs(5)),
+            read_request: Some(Duration::from_secs(1)),
+            write: Some(Duration::from_secs(1)),
+        })
+        .keep_connection_alive()
+    );
+
+    for id in 0..WEB_TASK_POOL_SIZE {
+        spawner.must_spawn(web_task(id, network_stack, app, config));
     }
 }
 
