@@ -1,14 +1,19 @@
+use core::fmt::Write;
 use heapless::String;
 
 const DEFAULT_ID: u8 = 1;
 
 pub fn set_id(id: u8) -> String<32> {
-    format!("<ID><{:02X}><E>", id)
+    let mut buffer = String::<32>::new();
+    write!(&mut buffer, "<ID><{:02X}><E>", id).unwrap();
+    buffer
 }
 
 fn wrap_command(id: u8, payload: &str) -> String<32> {
     let checksum = checksum(payload);
-    format!("<ID{:02X}>{}{:02X}<E>", id, payload, checksum)
+    let mut buffer = String::<32>::new();
+    write!(&mut buffer, "<ID{:02X}>{}{:02X}<E>", id, payload, checksum).unwrap();
+    buffer
 }
 
 fn checksum(payload: &str) -> u8 {
