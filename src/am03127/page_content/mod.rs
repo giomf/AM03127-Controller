@@ -3,7 +3,7 @@ pub mod formatting;
 use core::fmt::{self, Display, Write};
 use heapless::String;
 
-use super::{wrap_command, LARGE_STRING_SIZE, MEDIUM_STRING_SIZE};
+use super::{wrap_command, STRING_SIZE};
 
 const DEFAULT_PAGE: char = 'A';
 const DEFAULT_LINE: u8 = 1;
@@ -214,7 +214,7 @@ pub struct PageContent {
     leading: Leading,
     lagging: Lagging,
     waiting_mode_and_speed: WaitingModeAndSpeed,
-    message: String<LARGE_STRING_SIZE>,
+    message: String<STRING_SIZE>,
 }
 
 impl PageContent {
@@ -248,8 +248,8 @@ impl PageContent {
         self
     }
 
-    pub fn command(&self) -> String<MEDIUM_STRING_SIZE> {
-        let mut command = String::<MEDIUM_STRING_SIZE>::new();
+    pub fn command(&self) -> String<STRING_SIZE> {
+        let mut command = String::<STRING_SIZE>::new();
         write!(
             &mut command,
             "<L{}><P{}><F{}><M{}><WA><F{}>",
@@ -264,8 +264,8 @@ impl PageContent {
         wrap_command(self.id, &command)
     }
 
-    fn replace_european_character(message: &str) -> String<LARGE_STRING_SIZE> {
-        let mut result = String::<LARGE_STRING_SIZE>::new();
+    fn replace_european_character(message: &str) -> String<STRING_SIZE> {
+        let mut result = String::<STRING_SIZE>::new();
         for c in message.chars() {
             match c {
                 'ü' => result.push_str("<U7C>").unwrap_or(()),
