@@ -1,10 +1,11 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
- #[deny(clippy::mem_forget)]
+#[deny(clippy::mem_forget)]
 
 mod server;
 mod am03127;
+mod uart;
 
 use embassy_executor::Spawner;
 use embassy_net::{Runner, StackResources};
@@ -20,6 +21,7 @@ use esp_wifi::{
 };
 use picoserve::{AppBuilder, AppRouter, make_static};
 use server::{AppProps, web_task};
+use uart::Uart;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
@@ -37,6 +39,9 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
+
+
+    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
