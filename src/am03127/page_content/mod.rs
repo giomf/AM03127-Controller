@@ -3,7 +3,7 @@ pub mod formatting;
 use core::fmt::{self, Display, Write};
 use heapless::String;
 
-use super::wrap_command;
+use super::{wrap_command, LARGE_STRING_SIZE, MEDIUM_STRING_SIZE};
 
 const DEFAULT_PAGE: char = 'A';
 const DEFAULT_LINE: u8 = 1;
@@ -76,9 +76,8 @@ impl Display for Leading {
         write!(f, "{character}")
     }
 }
-#[derive(Debug, Default, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Lagging {
     /// Image will be disappeared one line by one line from top to bottom
     CurtainDown,
@@ -126,9 +125,8 @@ impl Display for Lagging {
 }
 
 /// Enum representing different speed levels and actions.
-#[derive(Debug, Default, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum WaitingModeAndSpeed {
     /// Display Blinking while waiting
     FastestBlinking,
@@ -216,7 +214,7 @@ pub struct PageContent {
     leading: Leading,
     lagging: Lagging,
     waiting_mode_and_speed: WaitingModeAndSpeed,
-    message: String<128>, // 128 characters should be enough for most display messages
+    message: String<LARGE_STRING_SIZE>,
 }
 
 impl PageContent {
@@ -250,8 +248,8 @@ impl PageContent {
         self
     }
 
-    pub fn command(&self) -> String<64> {
-        let mut command = String::<64>::new();
+    pub fn command(&self) -> String<MEDIUM_STRING_SIZE> {
+        let mut command = String::<MEDIUM_STRING_SIZE>::new();
         write!(
             &mut command,
             "<L{}><P{}><F{}><M{}><WA><F{}>",
@@ -266,8 +264,8 @@ impl PageContent {
         wrap_command(self.id, &command)
     }
 
-    fn replace_european_character(message: &str) -> String<128> {
-        let mut result = String::<128>::new();
+    fn replace_european_character(message: &str) -> String<LARGE_STRING_SIZE> {
+        let mut result = String::<LARGE_STRING_SIZE>::new();
         for c in message.chars() {
             match c {
                 'ü' => result.push_str("<U7C>").unwrap_or(()),
