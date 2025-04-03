@@ -1,7 +1,8 @@
 pub mod formatting;
 
 use crate::{wrap_command, DEFAULT_ID};
-use std::fmt::Display;
+use core::fmt::{self, Display, Write};
+use heapless::String;
 
 const DEFAULT_PAGE: char = 'A';
 const DEFAULT_LINE: u8 = 1;
@@ -50,7 +51,7 @@ pub enum Leading {
 }
 
 impl Display for Leading {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let character = match self {
             Leading::Immediate => 'A',
             Leading::Xopen => 'B',
@@ -105,7 +106,7 @@ pub enum Lagging {
 }
 
 impl Display for Lagging {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let character = match self {
             Lagging::Immediate => 'A',
             Lagging::Xopen => 'B',
@@ -176,7 +177,7 @@ pub enum WaitingModeAndSpeed {
 }
 
 impl Display for WaitingModeAndSpeed {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let character = match self {
             WaitingModeAndSpeed::FastestNormal => 'A',
             WaitingModeAndSpeed::FastestBlinking => 'B',
@@ -215,7 +216,7 @@ pub struct PageContent {
     leading: Leading,
     lagging: Lagging,
     waiting_mode_and_speed: WaitingModeAndSpeed,
-    message: String,
+    message: String<128>, // 128 characters should be enough for most display messages
 }
 
 impl PageContent {
@@ -244,32 +245,45 @@ impl PageContent {
         self
     }
     pub fn message(mut self, message: &str) -> Self {
-        self.message = message.to_string();
+        self.message.clear();
+        let _ = self.message.push_str(message);
         self
     }
 
-    pub fn command(&self) -> String {
-        let command = format!(
-            "<L{}><P{}><F{}><M{}><WA><F{}>{}",
+    pub fn command(&self) -> String<64> {
+        let mut command = String::<64>::new();
+        write!(
+            &mut command,
+            "<L{}><P{}><F{}><M{}><WA><F{}>",
             self.line,
             self.page,
             self.leading,
             self.waiting_mode_and_speed,
-            self.lagging,
-            Self::replace_european_character(&self.message)
-        );
+            self.lagging
+        ).unwrap();
+        
+        // Append the processed message
+        let processed = Self::replace_european_character(&self.message);
+        let _ = command.push_str(&processed);
+        
         wrap_command(self.id, &command)
     }
 
-    fn replace_european_character(message: &str) -> String {
-        message
-            .replace("ü", "<U7C>")
-            .replace("Ü", "<U5C>")
-            .replace("ä", "<U64>")
-            .replace("Ä", "<U44>")
-            .replace("ö", "<U76>")
-            .replace("Ö", "<U56>")
-            .replace("ß", "<U5F>")
+    fn replace_european_character(message: &str) -> String<128> {
+        let mut result = String::<128>::new();
+        for c in message.chars() {
+            match c {
+                'ü' => result.push_str("<U7C>").unwrap_or(()),
+                'Ü' => result.push_str("<U5C>").unwrap_or(()),
+                'ä' => result.push_str("<U64>").unwrap_or(()),
+                'Ä' => result.push_str("<U44>").unwrap_or(()),
+                'ö' => result.push_str("<U76>").unwrap_or(()),
+                'Ö' => result.push_str("<U56>").unwrap_or(()),
+                'ß' => result.push_str("<U5F>").unwrap_or(()),
+                _ => result.push(c).unwrap_or(()),
+            }
+        }
+        result
     }
 }
 
@@ -282,7 +296,7 @@ impl Default for PageContent {
             leading: Default::default(),
             lagging: Default::default(),
             waiting_mode_and_speed: Default::default(),
-            message: Default::default(),
+            message: String::new(),
         }
     }
 }
