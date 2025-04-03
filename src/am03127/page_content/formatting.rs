@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::{self, Display, Write};
 
 /// Font size
 pub enum Font {
@@ -15,7 +15,7 @@ pub enum Font {
 }
 
 impl Display for Font {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let command = match self {
             Font::Normal => "<AA>",
             Font::Bold => "<AB>",
@@ -27,11 +27,12 @@ impl Display for Font {
         write!(f, "{command}")
     }
 }
+
 pub struct ColumnStart(pub u8);
 
 impl Display for ColumnStart {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("<N{:02X}>", self.0))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<N{:02X}>", self.0)
     }
 }
 
@@ -43,7 +44,7 @@ pub enum Clock {
 }
 
 impl Display for Clock {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let command = match self {
             Clock::Date => "<KD>",
             Clock::Time => "<KT>",
