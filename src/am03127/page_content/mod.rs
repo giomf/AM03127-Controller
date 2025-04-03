@@ -1,15 +1,15 @@
 pub mod formatting;
 
-use crate::{wrap_command, DEFAULT_ID};
 use core::fmt::{self, Display, Write};
 use heapless::String;
+
+use super::wrap_command;
 
 const DEFAULT_PAGE: char = 'A';
 const DEFAULT_LINE: u8 = 1;
 
-#[derive(Debug, Default, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Leading {
     ///  8 pixel width display block will be moved from right to left one by one
     BlockMove,
@@ -255,17 +255,14 @@ impl PageContent {
         write!(
             &mut command,
             "<L{}><P{}><F{}><M{}><WA><F{}>",
-            self.line,
-            self.page,
-            self.leading,
-            self.waiting_mode_and_speed,
-            self.lagging
-        ).unwrap();
-        
+            self.line, self.page, self.leading, self.waiting_mode_and_speed, self.lagging
+        )
+        .unwrap();
+
         // Append the processed message
         let processed = Self::replace_european_character(&self.message);
         let _ = command.push_str(&processed);
-        
+
         wrap_command(self.id, &command)
     }
 
