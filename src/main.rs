@@ -1,8 +1,10 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
+ #[deny(clippy::mem_forget)]
 
 mod server;
+mod am03127;
 
 use embassy_executor::Spawner;
 use embassy_net::{Runner, StackResources};

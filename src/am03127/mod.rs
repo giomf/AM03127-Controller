@@ -4,7 +4,7 @@ use core::fmt::Write;
 use heapless::String;
 
 // Constant for string size
-pub const STRING_SIZE: usize = 32;
+pub const STRING_SIZE: usize = 64;
 
 pub fn set_id(id: u8) -> String<STRING_SIZE> {
     let mut buffer = String::<STRING_SIZE>::new();

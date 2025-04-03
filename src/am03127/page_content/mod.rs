@@ -6,6 +6,7 @@ use heapless::String;
 use super::{wrap_command, STRING_SIZE};
 
 const DEFAULT_PAGE: char = 'A';
+const DEFAULT_ID: u8 = 1;
 const DEFAULT_LINE: u8 = 1;
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
