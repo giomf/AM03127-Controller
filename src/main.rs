@@ -19,9 +19,10 @@ use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
-use picoserve::{AppBuilder, AppRouter, make_static};
-use server::{AppProps, web_task};
+use picoserve::{make_static, AppRouter, AppWithStateBuilder};
+use server::{web_task, AppProps, AppState, SharedUart};
 use uart::Uart;
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
@@ -39,9 +40,6 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let mut rng = Rng::new(peripherals.RNG);
-
-
-    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
 
     let esp_wifi_ctrl = &*make_static!(
         EspWifiController<'static>,
@@ -87,8 +85,13 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
+    // let uart = &*make_static!(Uart, Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3));
+    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
+    let shared_uart = SharedUart(
+        make_static!(Mutex<CriticalSectionRawMutex, Uart<'static>>, Mutex::new(uart)),
+    );
     for id in 0..WEB_TASK_POOL_SIZE {
-        spawner.must_spawn(web_task(id, network_stack, app, config));
+        spawner.must_spawn(web_task(id, network_stack, app, config, AppState{shared_uart}));
     }
 }
 
