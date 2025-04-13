@@ -1,4 +1,6 @@
-use core::fmt::{self, Display, Write};
+#![allow(dead_code)]
+
+use core::fmt::{self, Display};
 
 /// Font size
 pub enum Font {

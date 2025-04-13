@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod page_content;
 pub mod realtime_clock;
 use core::fmt::Write;

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{DEFAULT_ID, STRING_SIZE, wrap_command};
 use core::fmt::Write;
 use heapless::String;

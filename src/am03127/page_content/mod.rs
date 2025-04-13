@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod formatting;
 
 use core::fmt::{self, Display, Write};
