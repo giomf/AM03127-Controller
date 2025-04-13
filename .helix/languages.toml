@@ -4,3 +4,7 @@ name = "rust"
 [language-server.rust-analyzer.config]
 check.allTargets = false
 cargo.target = "riscv32imc-unknown-none-elf"
+
+[language.formatter]
+command = "rustfmt"
+args = ["--edition", "2024"]

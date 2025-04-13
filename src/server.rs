@@ -1,16 +1,48 @@
-use crate::{uart::Uart, WEB_TASK_POOL_SIZE};
-use embassy_time::Duration;
-use picoserve::{
-    extract::State, routing::{get, PathRouter}, AppBuilder, AppRouter, AppWithStateBuilder
-};
+use crate::am03127::page_content::formatting::{Clock as ClockFormat, ColumnStart, Font};
+use crate::am03127::realtime_clock::RealTimeClock;
+use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::PageContent, uart::Uart};
+use core::convert::From;
+use core::fmt::Write;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
+use embassy_time::Duration;
+use heapless::String;
+use picoserve::extract::Json;
+use picoserve::{
+    AppRouter, AppWithStateBuilder,
+    extract::State,
+    routing::{PathRouter, get},
+};
+use serde::Deserialize;
 
+const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
+
+#[derive(Default, Deserialize)]
+pub struct Clock {
+    pub day: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub month: u8,
+    pub second: u8,
+    pub year: u8,
+}
+
+impl From<Clock> for RealTimeClock {
+    fn from(clock: Clock) -> Self {
+        RealTimeClock::default()
+            .year(clock.year)
+            .month(clock.month)
+            .day(clock.day)
+            .hour(clock.hour)
+            .minute(clock.minute)
+            .second(clock.second)
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct SharedUart(pub &'static Mutex<CriticalSectionRawMutex, Uart<'static>>);
 
 pub struct AppState {
-    pub shared_uart: SharedUart
+    pub shared_uart: SharedUart,
 }
 
 impl picoserve::extract::FromRef<AppState> for SharedUart {
@@ -19,7 +51,6 @@ impl picoserve::extract::FromRef<AppState> for SharedUart {
     }
 }
 
-
 pub struct AppProps;
 
 impl AppWithStateBuilder for AppProps {
@@ -27,15 +58,48 @@ impl AppWithStateBuilder for AppProps {
     type PathRouter = impl PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
-         picoserve::Router::new()
-              .route(
-                  "",
-                get(
-                    |State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                        log::info!("");
-                    },
-                ),
-            ) 
+        picoserve::Router::new().route(
+            "/clock",
+            get(
+                |State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                    log::info!("Display clock");
+
+                    let mut message = String::<64>::new();
+                    write!(
+                        &mut message,
+                        "{}{}{}{}",
+                        ClockFormat::Time,
+                        Font::Narrow,
+                        ColumnStart(41),
+                        ClockFormat::Date
+                    )
+                    .unwrap();
+
+                    let command = PageContent::default().message(&message.as_str()).command();
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            )
+            .post(
+                |State(SharedUart(shared_uart)): State<SharedUart>,
+                 Json::<Clock, JSON_DESERIALIZE_BUFFER_SIZE>(clock)| async move {
+                    log::info!("Set clock");
+
+                    let command = RealTimeClock::from(clock).command();
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            ),
+        )
     }
 }
 

@@ -3,10 +3,9 @@ pub mod formatting;
 use core::fmt::{self, Display, Write};
 use heapless::String;
 
-use super::{wrap_command, STRING_SIZE};
+use super::{DEFAULT_ID, STRING_SIZE, wrap_command};
 
 const DEFAULT_PAGE: char = 'A';
-const DEFAULT_ID: u8 = 1;
 const DEFAULT_LINE: u8 = 1;
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]

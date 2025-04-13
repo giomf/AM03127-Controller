@@ -1,10 +1,12 @@
-mod page_content;
+pub mod page_content;
+pub mod realtime_clock;
 use core::fmt::Write;
 
 use heapless::String;
 
 // Constant for string size
 pub const STRING_SIZE: usize = 64;
+const DEFAULT_ID: u8 = 1;
 
 pub fn set_id(id: u8) -> String<STRING_SIZE> {
     let mut buffer = String::<STRING_SIZE>::new();
