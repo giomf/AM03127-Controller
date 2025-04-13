@@ -5,11 +5,6 @@ use picoserve::{
 };
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
-#[derive(serde::Deserialize)]
-struct QueryParams {
-    a: i32,
-    b: heapless::String<32>,
-}
 
 #[derive(Clone, Copy)]
 pub struct SharedUart(pub &'static Mutex<CriticalSectionRawMutex, Uart<'static>>);
