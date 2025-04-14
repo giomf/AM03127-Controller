@@ -2,13 +2,14 @@
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 #[deny(clippy::mem_forget)]
-
-mod server;
 mod am03127;
+mod server;
 mod uart;
 
+use am03127::DEFAULT_ID;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, StackResources};
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
@@ -19,10 +20,9 @@ use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
-use picoserve::{make_static, AppRouter, AppWithStateBuilder};
-use server::{web_task, AppProps, AppState, SharedUart};
+use picoserve::{AppRouter, AppWithStateBuilder, make_static};
+use server::{AppProps, AppState, SharedUart, web_task};
 use uart::Uart;
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
@@ -85,13 +85,21 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
-    // let uart = &*make_static!(Uart, Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3));
-    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
-    let shared_uart = SharedUart(
-        make_static!(Mutex<CriticalSectionRawMutex, Uart<'static>>, Mutex::new(uart)),
-    );
+    let mut uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
+    uart.init(DEFAULT_ID)
+        .await
+        .expect("Failed to inittialze uart");
+
+    let shared_uart =
+        SharedUart(make_static!(Mutex<CriticalSectionRawMutex, Uart<'static>>, Mutex::new(uart)));
     for id in 0..WEB_TASK_POOL_SIZE {
-        spawner.must_spawn(web_task(id, network_stack, app, config, AppState{shared_uart}));
+        spawner.must_spawn(web_task(
+            id,
+            network_stack,
+            app,
+            config,
+            AppState { shared_uart },
+        ));
     }
 }
 
