@@ -8,7 +8,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use heapless::String;
 use picoserve::extract::Json;
-use picoserve::routing::post;
+use picoserve::routing::{get_service, post};
 use picoserve::{
     AppRouter, AppWithStateBuilder,
     extract::State,
@@ -83,7 +83,8 @@ impl AppWithStateBuilder for AppProps {
     type PathRouter = impl PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
-        picoserve::Router::new()
+        picoserve::Router::new().
+            route("/", get_service(picoserve::response::File::html(include_str!("index.html"))),)
             .route(
                 "/clock",
                 get(

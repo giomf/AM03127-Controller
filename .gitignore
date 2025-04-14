@@ -2,3 +2,4 @@
 .envrc
 target/
 .aider*
+*.html
