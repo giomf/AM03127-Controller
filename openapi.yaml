@@ -1,0 +1,137 @@
+openapi: 3.0.0
+info:
+  title: AM03127 LED Display API
+  description: API for controlling an AM03127 LED display panel
+  version: 1.0.0
+
+paths:
+  /clock:
+    get:
+      summary: Display clock on the LED panel
+      description: Shows the current time and date on the LED display
+      responses:
+        '200':
+          description: Clock displayed successfully
+    post:
+      summary: Set the clock time
+      description: Sets the real-time clock on the LED display
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Clock'
+      responses:
+        '200':
+          description: Clock set successfully
+
+  /text:
+    post:
+      summary: Display formatted text on the LED panel
+      description: Sends formatted text to be displayed on the LED panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormattedText'
+      responses:
+        '200':
+          description: Text displayed successfully
+
+components:
+  schemas:
+    Clock:
+      type: object
+      required:
+        - day
+        - hour
+        - minute
+        - month
+        - second
+        - year
+      properties:
+        day:
+          type: integer
+          format: uint8
+          description: Day of the month
+          minimum: 1
+          maximum: 31
+        hour:
+          type: integer
+          format: uint8
+          description: Hour (24-hour format)
+          minimum: 0
+          maximum: 23
+        minute:
+          type: integer
+          format: uint8
+          description: Minute
+          minimum: 0
+          maximum: 59
+        month:
+          type: integer
+          format: uint8
+          description: Month
+          minimum: 1
+          maximum: 12
+        second:
+          type: integer
+          format: uint8
+          description: Second
+          minimum: 0
+          maximum: 59
+        year:
+          type: integer
+          format: uint8
+          description: Year (last two digits)
+          minimum: 0
+          maximum: 99
+    
+    FormattedText:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Text to display on the LED panel
+          maxLength: 32
+        leading:
+          type: string
+          description: Animation effect when text appears
+          enum:
+            - BlockMove
+            - CurtainDown
+            - CurtainUp
+            - Hold
+            - Immediate
+            - ScrollLeft
+            - ScrollRight
+            - Vopen
+            - Vclose
+            - Xopen
+        lagging:
+          type: string
+          description: Animation effect when text disappears
+          enum:
+            - CurtainDown
+            - CurtainUp
+            - Hold
+            - Immediate
+            - ScrollLeft
+            - ScrollRight
+            - Vopen
+            - Vclose
+            - Xopen
+        waiting_mode_and_speed:
+          type: string
+          description: Display behavior while waiting
+          enum:
+            - FastestBlinking
+            - FastestNormal
+            - FastestSong1
+            - FastestSong2
+            - FastestSong3
+            - MiddleFastNormal
+            - MiddleFastBlinking
