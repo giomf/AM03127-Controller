@@ -25,6 +25,7 @@
           toolchain
           pkgs.esp-generate
           pkgs.espflash
+          pkgs.jre21_minimal
         ];
       };
     };
