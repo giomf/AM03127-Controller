@@ -2,10 +2,12 @@
 
 pub mod formatting;
 
-use core::fmt::{self, Display, Write};
+use core::fmt::{self, Display};
 use heapless::String;
 
-use super::{DEFAULT_ID, DEFAULT_LINE, DEFAULT_PAGE, STRING_SIZE, wrap_command};
+use crate::server::dto::PageDto;
+
+use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, STRING_SIZE};
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -206,8 +208,7 @@ impl Display for WaitingModeAndSpeed {
 }
 
 #[derive(Debug, Clone)]
-pub struct PageContent {
-    id: u8,
+pub struct Page {
     line: u8,
     page: char,
     leading: Leading,
@@ -216,11 +217,9 @@ pub struct PageContent {
     message: String<STRING_SIZE>,
 }
 
-impl PageContent {
-    pub fn id(mut self, id: u8) -> Self {
-        self.id = id;
-        self
-    }
+impl CommandAble for Page {}
+
+impl Page {
     pub fn line(mut self, line: u8) -> Self {
         self.line = line;
         self
@@ -247,20 +246,13 @@ impl PageContent {
         self
     }
 
-    pub fn command(&self) -> String<STRING_SIZE> {
-        let mut command = String::<STRING_SIZE>::new();
-        write!(
-            &mut command,
-            "<L{}><P{}><F{}><M{}><WA><F{}>",
-            self.line, self.page, self.leading, self.waiting_mode_and_speed, self.lagging
-        )
-        .unwrap();
-
-        // Append the processed message
-        let processed = Self::replace_european_character(&self.message);
-        let _ = command.push_str(&processed);
-
-        wrap_command(self.id, &command)
+    pub fn from_dto_with_id(page: char, dto: PageDto) -> Self {
+        Self::default()
+            .page(page)
+            .leading(dto.leading)
+            .lagging(dto.lagging)
+            .waiting_mode_and_speed(dto.waiting_mode_and_speed)
+            .message(&dto.text)
     }
 
     fn replace_european_character(message: &str) -> String<STRING_SIZE> {
@@ -281,10 +273,20 @@ impl PageContent {
     }
 }
 
-impl Default for PageContent {
+impl Display for Page {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = Self::replace_european_character(&self.message);
+        write!(
+            f,
+            "<L{}><P{}><F{}><M{}><WA><F{}>{}",
+            self.line, self.page, self.leading, self.waiting_mode_and_speed, self.lagging, message
+        )
+    }
+}
+
+impl Default for Page {
     fn default() -> Self {
         Self {
-            id: DEFAULT_ID,
             page: DEFAULT_PAGE,
             line: DEFAULT_LINE,
             leading: Default::default(),

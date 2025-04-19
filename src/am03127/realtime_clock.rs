@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 
-use super::{DEFAULT_ID, STRING_SIZE, wrap_command};
-use core::fmt::Write;
-use heapless::String;
+use crate::server::dto::DateTimeDto;
 
-pub struct RealTimeClock {
-    id: u8,
+use super::CommandAble;
+use core::fmt::Display;
+
+#[derive(Default)]
+pub struct DateTime {
     year: u8,
     week: u8,
     month: u8,
@@ -15,11 +16,22 @@ pub struct RealTimeClock {
     second: u8,
 }
 
-impl RealTimeClock {
-    pub fn id(mut self, id: u8) -> Self {
-        self.id = id;
-        self
+impl From<DateTimeDto> for DateTime {
+    fn from(value: DateTimeDto) -> Self {
+        DateTime::default()
+            .year(value.year)
+            .month(value.month)
+            .week(value.week)
+            .day(value.day)
+            .hour(value.hour)
+            .minute(value.minute)
+            .second(value.second)
     }
+}
+
+impl CommandAble for DateTime {}
+
+impl DateTime {
     pub fn year(mut self, year: u8) -> Self {
         self.year = year;
         self
@@ -48,31 +60,14 @@ impl RealTimeClock {
         self.second = second;
         self
     }
+}
 
-    pub fn command(&self) -> String<STRING_SIZE> {
-        let mut command = String::<STRING_SIZE>::new();
+impl Display for DateTime {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
-            &mut command,
+            f,
             "<SC>{:02}{:02}{:02}{:02}{:02}{:02}{:02}",
             self.year, self.week, self.month, self.day, self.hour, self.minute, self.second
         )
-        .unwrap();
-
-        wrap_command(self.id, &command)
-    }
-}
-
-impl Default for RealTimeClock {
-    fn default() -> Self {
-        Self {
-            id: DEFAULT_ID,
-            year: 0,
-            week: 0,
-            month: 0,
-            day: 0,
-            hour: 0,
-            minute: 0,
-            second: 0,
-        }
     }
 }

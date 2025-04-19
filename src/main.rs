@@ -6,7 +6,7 @@ mod am03127;
 mod server;
 mod uart;
 
-use am03127::DEFAULT_ID;
+use am03127::DEFAULT_PANEL_ID;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -86,7 +86,7 @@ async fn main(spawner: Spawner) {
     );
 
     let mut uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
-    uart.init(DEFAULT_ID)
+    uart.init(DEFAULT_PANEL_ID)
         .await
         .expect("Failed to inittialze uart");
 

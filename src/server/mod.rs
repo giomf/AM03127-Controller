@@ -1,10 +1,13 @@
-use crate::am03127::delete::DeletePage;
+pub mod dto;
+
+use crate::am03127::delete::{DeletePage, DeleteSchedule};
 use crate::am03127::page_content::formatting::{Clock as ClockFormat, ColumnStart, Font};
-use crate::am03127::page_content::{Lagging, Leading, WaitingModeAndSpeed};
-use crate::am03127::realtime_clock::RealTimeClock;
-use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::PageContent, uart::Uart};
+use crate::am03127::realtime_clock::DateTime;
+use crate::am03127::{CommandAble, DEFAULT_PANEL_ID};
+use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::Page, uart::Uart};
 use core::convert::From;
 use core::fmt::Write;
+use dto::{DateTimeDto, PageDto, ScheduleDto};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use heapless::String;
@@ -15,61 +18,8 @@ use picoserve::{
     extract::State,
     routing::{PathRouter, get},
 };
-use serde::Deserialize;
 
 const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
-
-#[derive(Default, Deserialize, Debug, Clone)]
-pub struct DateTime {
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub month: u8,
-    pub second: u8,
-    pub year: u8,
-    pub week: u8,
-}
-
-impl From<DateTime> for RealTimeClock {
-    fn from(clock: DateTime) -> Self {
-        RealTimeClock::default()
-            .year(clock.year)
-            .month(clock.month)
-            .day(clock.day)
-            .hour(clock.hour)
-            .minute(clock.minute)
-            .second(clock.second)
-    }
-}
-
-impl From<Page> for PageContent {
-    fn from(page: Page) -> Self {
-        PageContent::default()
-            .leading(page.leading)
-            .lagging(page.lagging)
-            .waiting_mode_and_speed(page.waiting_mode_and_speed)
-            .message(&page.text)
-    }
-}
-#[derive(Deserialize, Debug, Clone, Default)]
-#[serde(deny_unknown_fields)]
-pub struct Page {
-    pub text: String<32>,
-    #[serde(default)]
-    pub leading: Leading,
-    #[serde(default)]
-    pub lagging: Lagging,
-    #[serde(default)]
-    pub waiting_mode_and_speed: WaitingModeAndSpeed,
-}
-
-#[derive(Deserialize, Debug, Clone, Default)]
-#[serde(deny_unknown_fields)]
-pub struct Schedule {
-    pub from: DateTime,
-    pub to: DateTime,
-    pub schedule: heapless::Vec<char, 32>,
-}
 
 #[derive(Clone, Copy)]
 pub struct SharedUart(pub &'static Mutex<CriticalSectionRawMutex, Uart<'static>>);
@@ -115,7 +65,9 @@ impl AppWithStateBuilder for AppProps {
                         )
                         .unwrap();
 
-                        let command = PageContent::default().message(&message.as_str()).command();
+                        let command = Page::default()
+                            .message(&message.as_str())
+                            .command(DEFAULT_PANEL_ID);
                         shared_uart
                             .lock()
                             .await
@@ -126,10 +78,10 @@ impl AppWithStateBuilder for AppProps {
                 )
                 .post(
                     |State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<DateTime, JSON_DESERIALIZE_BUFFER_SIZE>(clock)| async move {
+                     Json::<DateTimeDto, JSON_DESERIALIZE_BUFFER_SIZE>(date_time_dto)| async move {
                         log::info!("Set clock");
 
-                        let command = RealTimeClock::from(clock).command();
+                        let command = DateTime::from(date_time_dto).command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()
@@ -145,10 +97,10 @@ impl AppWithStateBuilder for AppProps {
                 post(
                     |page_id,
                      State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
+                     Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
                         log::info!("Setting page {page_id}");
 
-                        let command = PageContent::from(page).page(page_id).command();
+                        let command = Page::from_dto_with_id(page_id, page).command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()
@@ -160,9 +112,8 @@ impl AppWithStateBuilder for AppProps {
                 )
                 .delete(
                     |page_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                        log::info!("Deleting page {page_id}");
-
-                        let command = DeletePage::default().page(page_id).command();
+                        log::info!("Delete page {page_id}");
+                        let command = DeletePage::default().page_id(page_id).command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()
@@ -178,9 +129,9 @@ impl AppWithStateBuilder for AppProps {
                 post(
                     |schedule_id,
                      State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
+                     Json::<ScheduleDto, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
                         log::info!("Setting schedule {schedule_id}");
-                        let command = DeletePage::default().command();
+                        let command = DeletePage::default().command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()
@@ -193,7 +144,9 @@ impl AppWithStateBuilder for AppProps {
                 .delete(
                     |schedule_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
                         log::info!("Deleting schedule {schedule_id}");
-                        let command = DeletePage::default().command();
+                        let command = DeleteSchedule::default()
+                            .schedule_id(schedule_id)
+                            .command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()

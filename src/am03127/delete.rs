@@ -1,107 +1,79 @@
-use super::{DEFAULT_ID, DEFAULT_LINE, DEFAULT_PAGE, DEFAULT_SCHEDULE, STRING_SIZE, wrap_command};
-use core::fmt::Write;
-use heapless::String;
+use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, DEFAULT_SCHEDULE};
+use core::fmt::Display;
 
-pub struct DeleteAll {
-    id: u8,
-}
-
-impl DeleteAll {
-    pub fn new(id: u8) -> Self {
-        Self { id }
-    }
-    
-    pub fn id(mut self, id: u8) -> Self {
-        self.id = id;
-        self
-    }
-    
-    pub fn command(&self) -> String<STRING_SIZE> {
-        wrap_command(self.id, "<D*>")
-    }
-}
-
-impl Default for DeleteAll {
-    fn default() -> Self {
-        Self { id: DEFAULT_ID }
+pub struct DeleteAll {}
+impl CommandAble for DeleteAll {}
+impl Display for DeleteAll {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "<D*>")
     }
 }
 
 pub struct DeletePage {
-    id: u8,
     line: u8,
-    page: char,
+    page_id: char,
 }
 
+impl CommandAble for DeletePage {}
+
 impl DeletePage {
-    pub fn new(id: u8, line: u8, page: char) -> Self {
-        Self { id, line, page }
-    }
-    
-    pub fn id(mut self, id: u8) -> Self {
-        self.id = id;
-        self
-    }
-    
     pub fn line(mut self, line: u8) -> Self {
         self.line = line;
         self
     }
-    
-    pub fn page(mut self, page: char) -> Self {
-        self.page = page;
+
+    pub fn page_id(mut self, page_id: char) -> Self {
+        self.page_id = page_id;
         self
     }
-    
-    pub fn command(&self) -> String<STRING_SIZE> {
-        let mut buffer = String::<STRING_SIZE>::new();
-        write!(&mut buffer, "<DL{}P{}", self.line, self.page).unwrap();
-        wrap_command(self.id, &buffer)
+}
+
+impl Display for DeletePage {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "<DL{}P{}>", self.line, self.page_id)
     }
 }
 
 impl Default for DeletePage {
     fn default() -> Self {
         Self {
-            id: DEFAULT_ID,
+            page_id: DEFAULT_PAGE,
             line: DEFAULT_LINE,
-            page: DEFAULT_PAGE,
         }
     }
 }
 
 pub struct DeleteSchedule {
-    id: u8,
-    schedule: char,
+    schedule_id: char,
 }
 
+impl CommandAble for DeleteSchedule {}
+
 impl DeleteSchedule {
-    pub fn new(id: u8, schedule: char) -> Self {
-        Self { id, schedule }
+    pub fn new(schedule_id: char) -> Self {
+        Self { schedule_id }
     }
-    
-    pub fn id(mut self, id: u8) -> Self {
-        self.id = id;
+
+    pub fn schedule_id(mut self, schedule_id: char) -> Self {
+        self.schedule_id = schedule_id;
         self
     }
     
-    pub fn schedule(mut self, schedule: char) -> Self {
-        self.schedule = schedule;
-        self
+    pub fn from_with_id(id: char) -> Self {
+        Self { schedule_id: id }
     }
-    
-    pub fn command(&self) -> String<STRING_SIZE> {
-        let mut buffer = String::<STRING_SIZE>::new();
-        write!(&mut buffer, "<DT{}>", self.schedule).unwrap();
-        wrap_command(self.id, &buffer)
+}
+
+impl Display for DeleteSchedule {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "<DT{}>", self.schedule_id)
     }
 }
 
 impl Default for DeleteSchedule {
     fn default() -> Self {
         Self {
-            id: DEFAULT_ID,
-            schedule: DEFAULT_SCHEDULE,
+            schedule_id: DEFAULT_SCHEDULE,
         }
     }
 }
