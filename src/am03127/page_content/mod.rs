@@ -5,10 +5,7 @@ pub mod formatting;
 use core::fmt::{self, Display, Write};
 use heapless::String;
 
-use super::{DEFAULT_ID, STRING_SIZE, wrap_command};
-
-const DEFAULT_PAGE: char = 'A';
-const DEFAULT_LINE: u8 = 1;
+use super::{DEFAULT_ID, DEFAULT_LINE, DEFAULT_PAGE, STRING_SIZE, wrap_command};
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]

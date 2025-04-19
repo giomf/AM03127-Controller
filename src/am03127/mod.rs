@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
+pub mod delete;
 pub mod page_content;
 pub mod realtime_clock;
+
 use core::fmt::Write;
 
 use heapless::String;
@@ -9,6 +11,9 @@ use heapless::String;
 // Constant for string size
 pub const STRING_SIZE: usize = 64;
 pub const DEFAULT_ID: u8 = 1;
+pub const DEFAULT_PAGE: char = 'A';
+pub const DEFAULT_LINE: u8 = 1;
+pub const DEFAULT_SCHEDULE: char = 'A';
 
 pub fn set_id(id: u8) -> String<STRING_SIZE> {
     let mut buffer = String::<STRING_SIZE>::new();

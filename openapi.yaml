@@ -1,47 +1,99 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: AM03127 LED Display API
-  description: API for controlling an AM03127 LED display panel
+  title: LED Panel Control API
+  description: API for controlling an AM03127 LED panel
   version: 1.0.0
-
+servers:
+  - url: http://localhost:80
+    description: Local server
 paths:
+  /:
+    get:
+      summary: Get the HTML interface
+      description: Returns the HTML interface for controlling the LED panel
+      responses:
+        '200':
+          description: HTML interface
+          content:
+            text/html:
+              schema:
+                type: string
   /clock:
     get:
       summary: Display clock on the LED panel
-      description: Shows the current time and date on the LED display
+      description: Shows the current time and date on the LED panel
       responses:
         '200':
           description: Clock displayed successfully
     post:
-      summary: Set the clock time
-      description: Sets the real-time clock on the LED display
+      summary: Set the clock
+      description: Sets the internal clock of the LED panel
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Clock'
+              $ref: '#/components/schemas/DateTime'
       responses:
         '200':
           description: Clock set successfully
-
-  /text:
+  /page/{pageId}:
+    parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: char
+        description: The ID of the page (a single character)
     post:
-      summary: Display formatted text on the LED panel
-      description: Sends formatted text to be displayed on the LED panel
+      summary: Set page content
+      description: Sets the content for a specific page on the LED panel
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FormattedText'
+              $ref: '#/components/schemas/Page'
       responses:
         '200':
-          description: Text displayed successfully
-
+          description: Page content set successfully
+    delete:
+      summary: Delete a page
+      description: Deletes a specific page from the LED panel
+      responses:
+        '200':
+          description: Page deleted successfully
+  /schedule/{scheduleId}:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: char
+        description: The ID of the schedule (a single character)
+    post:
+      summary: Set a schedule
+      description: Sets a schedule for displaying content on the LED panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+      responses:
+        '200':
+          description: Schedule set successfully
+    delete:
+      summary: Delete a schedule
+      description: Deletes a specific schedule from the LED panel
+      responses:
+        '200':
+          description: Schedule deleted successfully
 components:
   schemas:
-    Clock:
+    DateTime:
       type: object
       required:
         - day
@@ -50,88 +102,121 @@ components:
         - month
         - second
         - year
+        - week
       properties:
         day:
           type: integer
           format: uint8
-          description: Day of the month
-          minimum: 1
+          minimum: 0
           maximum: 31
+          description: Day of the month
         hour:
           type: integer
           format: uint8
-          description: Hour (24-hour format)
           minimum: 0
           maximum: 23
+          description: Hour (24-hour format)
         minute:
           type: integer
           format: uint8
-          description: Minute
           minimum: 0
           maximum: 59
+          description: Minute
         month:
           type: integer
           format: uint8
-          description: Month
           minimum: 1
           maximum: 12
+          description: Month
         second:
           type: integer
           format: uint8
-          description: Second
           minimum: 0
           maximum: 59
+          description: Second
         year:
           type: integer
           format: uint8
-          description: Year (last two digits)
-          minimum: 0
-          maximum: 99
-    
-    FormattedText:
+          description: Year (2-digit format)
+        week:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 53
+          description: Week of the year
+    Page:
       type: object
       required:
         - text
       properties:
         text:
           type: string
-          description: Text to display on the LED panel
           maxLength: 32
+          description: Text content to display on the page
         leading:
-          type: string
-          description: Animation effect when text appears
-          enum:
-            - BlockMove
-            - CurtainDown
-            - CurtainUp
-            - Hold
-            - Immediate
-            - ScrollLeft
-            - ScrollRight
-            - Vopen
-            - Vclose
-            - Xopen
+          $ref: '#/components/schemas/Leading'
+          description: Animation for page entry
         lagging:
-          type: string
-          description: Animation effect when text disappears
-          enum:
-            - CurtainDown
-            - CurtainUp
-            - Hold
-            - Immediate
-            - ScrollLeft
-            - ScrollRight
-            - Vopen
-            - Vclose
-            - Xopen
+          $ref: '#/components/schemas/Lagging'
+          description: Animation for page exit
         waiting_mode_and_speed:
-          type: string
-          description: Display behavior while waiting
-          enum:
-            - FastestBlinking
-            - FastestNormal
-            - FastestSong1
-            - FastestSong2
-            - FastestSong3
-            - MiddleFastNormal
-            - MiddleFastBlinking
+          $ref: '#/components/schemas/WaitingModeAndSpeed'
+          description: Behavior while page is displayed
+    Leading:
+      type: string
+      enum:
+        - BlockMove
+        - CurtainDown
+        - CurtainUp
+        - Hold
+        - Immediate
+        - ScrollLeft
+        - ScrollRight
+        - Vclose
+        - Vopen
+        - Xopen
+      description: Animation for page entry
+    Lagging:
+      type: string
+      enum:
+        - CurtainDown
+        - CurtainUp
+        - Hold
+        - Immediate
+        - ScrollLeft
+        - ScrollRight
+        - Vclose
+        - Vopen
+        - Xopen
+      description: Animation for page exit
+    WaitingModeAndSpeed:
+      type: string
+      enum:
+        - FastestBlinking
+        - FastestNormal
+        - FastestSong1
+        - FastestSong2
+        - FastestSong3
+        - MiddleFastNormal
+        - MiddleFastBlinking
+      description: Behavior while page is displayed
+    Schedule:
+      type: object
+      required:
+        - from
+        - to
+        - schedule
+      properties:
+        from:
+          $ref: '#/components/schemas/DateTime'
+          description: Start time for the schedule
+        to:
+          $ref: '#/components/schemas/DateTime'
+          description: End time for the schedule
+        schedule:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            format: char
+          description: List of page IDs to display during the scheduled time

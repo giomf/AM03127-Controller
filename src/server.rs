@@ -1,3 +1,4 @@
+use crate::am03127::delete::DeletePage;
 use crate::am03127::page_content::formatting::{Clock as ClockFormat, ColumnStart, Font};
 use crate::am03127::page_content::{Lagging, Leading, WaitingModeAndSpeed};
 use crate::am03127::realtime_clock::RealTimeClock;
@@ -8,7 +9,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use heapless::String;
 use picoserve::extract::Json;
-use picoserve::routing::{get_service, post};
+use picoserve::routing::{get_service, parse_path_segment, post};
 use picoserve::{
     AppRouter, AppWithStateBuilder,
     extract::State,
@@ -19,17 +20,18 @@ use serde::Deserialize;
 const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 
 #[derive(Default, Deserialize, Debug, Clone)]
-pub struct Clock {
+pub struct DateTime {
     pub day: u8,
     pub hour: u8,
     pub minute: u8,
     pub month: u8,
     pub second: u8,
     pub year: u8,
+    pub week: u8,
 }
 
-impl From<Clock> for RealTimeClock {
-    fn from(clock: Clock) -> Self {
+impl From<DateTime> for RealTimeClock {
+    fn from(clock: DateTime) -> Self {
         RealTimeClock::default()
             .year(clock.year)
             .month(clock.month)
@@ -40,18 +42,18 @@ impl From<Clock> for RealTimeClock {
     }
 }
 
-impl From<FormattedText> for PageContent {
-    fn from(formatted_text: FormattedText) -> Self {
+impl From<Page> for PageContent {
+    fn from(page: Page) -> Self {
         PageContent::default()
-            .leading(formatted_text.leading)
-            .lagging(formatted_text.lagging)
-            .waiting_mode_and_speed(formatted_text.waiting_mode_and_speed)
-            .message(&formatted_text.text)
+            .leading(page.leading)
+            .lagging(page.lagging)
+            .waiting_mode_and_speed(page.waiting_mode_and_speed)
+            .message(&page.text)
     }
 }
 #[derive(Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
-pub struct FormattedText {
+pub struct Page {
     pub text: String<32>,
     #[serde(default)]
     pub leading: Leading,
@@ -59,6 +61,14 @@ pub struct FormattedText {
     pub lagging: Lagging,
     #[serde(default)]
     pub waiting_mode_and_speed: WaitingModeAndSpeed,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Schedule {
+    pub from: DateTime,
+    pub to: DateTime,
+    pub schedule: heapless::Vec<char, 32>,
 }
 
 #[derive(Clone, Copy)]
@@ -83,8 +93,11 @@ impl AppWithStateBuilder for AppProps {
     type PathRouter = impl PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
-        picoserve::Router::new().
-            route("/", get_service(picoserve::response::File::html(include_str!("index.html"))),)
+        picoserve::Router::new()
+            .route(
+                "/",
+                get_service(picoserve::response::File::html(include_str!("index.html"))),
+            )
             .route(
                 "/clock",
                 get(
@@ -113,7 +126,7 @@ impl AppWithStateBuilder for AppProps {
                 )
                 .post(
                     |State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<Clock, JSON_DESERIALIZE_BUFFER_SIZE>(clock)| async move {
+                     Json::<DateTime, JSON_DESERIALIZE_BUFFER_SIZE>(clock)| async move {
                         log::info!("Set clock");
 
                         let command = RealTimeClock::from(clock).command();
@@ -128,13 +141,59 @@ impl AppWithStateBuilder for AppProps {
                 ),
             )
             .route(
-                "/text",
+                ("/page", parse_path_segment::<char>()),
                 post(
-                    |State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<FormattedText, JSON_DESERIALIZE_BUFFER_SIZE>(formatted_text)| async move {
-                        log::info!("Setting Panel text");
+                    |page_id,
+                     State(SharedUart(shared_uart)): State<SharedUart>,
+                     Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
+                        log::info!("Setting page {page_id}");
 
-                        let command = PageContent::from(formatted_text).command();
+                        let command = PageContent::from(page).page(page_id).command();
+
+                        shared_uart
+                            .lock()
+                            .await
+                            .write(command.as_bytes())
+                            .await
+                            .unwrap();
+                    },
+                )
+                .delete(
+                    |page_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                        log::info!("Deleting page {page_id}");
+
+                        let command = DeletePage::default().page(page_id).command();
+
+                        shared_uart
+                            .lock()
+                            .await
+                            .write(command.as_bytes())
+                            .await
+                            .unwrap();
+                    },
+                ),
+            )
+            .route(
+                ("/schedule", parse_path_segment::<char>()),
+                post(
+                    |schedule_id,
+                     State(SharedUart(shared_uart)): State<SharedUart>,
+                     Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
+                        log::info!("Setting schedule {schedule_id}");
+                        let command = DeletePage::default().command();
+
+                        shared_uart
+                            .lock()
+                            .await
+                            .write(command.as_bytes())
+                            .await
+                            .unwrap();
+                    },
+                )
+                .delete(
+                    |schedule_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                        log::info!("Deleting schedule {schedule_id}");
+                        let command = DeletePage::default().command();
 
                         shared_uart
                             .lock()
