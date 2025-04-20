@@ -53,15 +53,6 @@ impl DeleteSchedule {
     pub fn new(schedule_id: char) -> Self {
         Self { schedule_id }
     }
-
-    pub fn schedule_id(mut self, schedule_id: char) -> Self {
-        self.schedule_id = schedule_id;
-        self
-    }
-    
-    pub fn from_with_id(id: char) -> Self {
-        Self { schedule_id: id }
-    }
 }
 
 impl Display for DeleteSchedule {

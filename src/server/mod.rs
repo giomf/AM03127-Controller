@@ -3,6 +3,7 @@ pub mod dto;
 use crate::am03127::delete::{DeletePage, DeleteSchedule};
 use crate::am03127::page_content::formatting::{Clock as ClockFormat, ColumnStart, Font};
 use crate::am03127::realtime_clock::DateTime;
+use crate::am03127::schedule::Schedule;
 use crate::am03127::{CommandAble, DEFAULT_PANEL_ID};
 use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::Page, uart::Uart};
 use core::convert::From;
@@ -131,7 +132,7 @@ impl AppWithStateBuilder for AppProps {
                      State(SharedUart(shared_uart)): State<SharedUart>,
                      Json::<ScheduleDto, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
                         log::info!("Setting schedule {schedule_id}");
-                        let command = DeletePage::default().command(DEFAULT_PANEL_ID);
+                        let command = Schedule::from_dto_with_id(schedule, schedule_id).command(DEFAULT_PANEL_ID);
 
                         shared_uart
                             .lock()
@@ -144,8 +145,7 @@ impl AppWithStateBuilder for AppProps {
                 .delete(
                     |schedule_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
                         log::info!("Deleting schedule {schedule_id}");
-                        let command = DeleteSchedule::default()
-                            .schedule_id(schedule_id)
+                        let command = DeleteSchedule::new(schedule_id)
                             .command(DEFAULT_PANEL_ID);
 
                         shared_uart
