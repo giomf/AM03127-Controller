@@ -39,124 +39,144 @@ impl picoserve::extract::FromRef<AppState> for SharedUart {
 #[derive(Debug, Clone, Default)]
 pub struct AppProps;
 
+impl AppProps {
+    pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+        picoserve::Router::new().route(
+            "/",
+            get_service(picoserve::response::File::html(include_str!("index.html"))),
+        )
+    }
+
+    pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+        picoserve::Router::new().route(
+            "/clock",
+            get(
+                |State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                    log::info!("Display clock");
+
+                    let mut message = String::<64>::new();
+                    write!(
+                        &mut message,
+                        "{}{}{}{}",
+                        ClockFormat::Time,
+                        Font::Narrow,
+                        ColumnStart(41),
+                        ClockFormat::Date
+                    )
+                    .unwrap();
+
+                    let command = Page::default()
+                        .message(&message.as_str())
+                        .command(DEFAULT_PANEL_ID);
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            )
+            .post(
+                |State(SharedUart(shared_uart)): State<SharedUart>,
+                 Json::<DateTimeDto, JSON_DESERIALIZE_BUFFER_SIZE>(date_time_dto)| async move {
+                    log::info!("Set clock");
+
+                    let command = DateTime::from(date_time_dto).command(DEFAULT_PANEL_ID);
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            ),
+        )
+    }
+
+    pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+        picoserve::Router::new().route(
+            ("/page", parse_path_segment::<char>()),
+            post(
+                |page_id,
+                 State(SharedUart(shared_uart)): State<SharedUart>,
+                 Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
+                    log::info!("Setting page {page_id}");
+
+                    let command = Page::from_dto_with_id(page_id, page).command(DEFAULT_PANEL_ID);
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            )
+            .delete(
+                |page_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                    log::info!("Delete page {page_id}");
+                    let command = DeletePage::default()
+                        .page_id(page_id)
+                        .command(DEFAULT_PANEL_ID);
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            ),
+        )
+    }
+
+    pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+        picoserve::Router::new().route(
+            ("/schedule", parse_path_segment::<char>()),
+            post(
+                |schedule_id,
+                 State(SharedUart(shared_uart)): State<SharedUart>,
+                 Json::<ScheduleDto, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
+                    log::info!("Setting schedule {schedule_id}");
+                    let command =
+                        Schedule::from_dto_with_id(schedule, schedule_id).command(DEFAULT_PANEL_ID);
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            )
+            .delete(
+                |schedule_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
+                    log::info!("Deleting schedule {schedule_id}");
+                    let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
+
+                    shared_uart
+                        .lock()
+                        .await
+                        .write(command.as_bytes())
+                        .await
+                        .unwrap();
+                },
+            ),
+        )
+    }
+}
+
 impl AppWithStateBuilder for AppProps {
     type State = AppState;
     type PathRouter = impl PathRouter<AppState>;
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
         picoserve::Router::new()
-            .route(
-                "/",
-                get_service(picoserve::response::File::html(include_str!("index.html"))),
-            )
-            .route(
-                "/clock",
-                get(
-                    |State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                        log::info!("Display clock");
-
-                        let mut message = String::<64>::new();
-                        write!(
-                            &mut message,
-                            "{}{}{}{}",
-                            ClockFormat::Time,
-                            Font::Narrow,
-                            ColumnStart(41),
-                            ClockFormat::Date
-                        )
-                        .unwrap();
-
-                        let command = Page::default()
-                            .message(&message.as_str())
-                            .command(DEFAULT_PANEL_ID);
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                )
-                .post(
-                    |State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<DateTimeDto, JSON_DESERIALIZE_BUFFER_SIZE>(date_time_dto)| async move {
-                        log::info!("Set clock");
-
-                        let command = DateTime::from(date_time_dto).command(DEFAULT_PANEL_ID);
-
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                ),
-            )
-            .route(
-                ("/page", parse_path_segment::<char>()),
-                post(
-                    |page_id,
-                     State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
-                        log::info!("Setting page {page_id}");
-
-                        let command = Page::from_dto_with_id(page_id, page).command(DEFAULT_PANEL_ID);
-
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                )
-                .delete(
-                    |page_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                        log::info!("Delete page {page_id}");
-                        let command = DeletePage::default().page_id(page_id).command(DEFAULT_PANEL_ID);
-
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                ),
-            )
-            .route(
-                ("/schedule", parse_path_segment::<char>()),
-                post(
-                    |schedule_id,
-                     State(SharedUart(shared_uart)): State<SharedUart>,
-                     Json::<ScheduleDto, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
-                        log::info!("Setting schedule {schedule_id}");
-                        let command = Schedule::from_dto_with_id(schedule, schedule_id).command(DEFAULT_PANEL_ID);
-
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                )
-                .delete(
-                    |schedule_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                        log::info!("Deleting schedule {schedule_id}");
-                        let command = DeleteSchedule::new(schedule_id)
-                            .command(DEFAULT_PANEL_ID);
-
-                        shared_uart
-                            .lock()
-                            .await
-                            .write(command.as_bytes())
-                            .await
-                            .unwrap();
-                    },
-                ),
-            )
+            .nest("/", Self::static_router())
+            .nest("/", Self::clock_router())
+            .nest("/", Self::page_router())
+            .nest("/", Self::schedule_router())
     }
 }
 
