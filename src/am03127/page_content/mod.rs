@@ -4,6 +4,7 @@ pub mod formatting;
 
 use core::fmt::{self, Display};
 use heapless::String;
+use serde::{Deserialize, Serialize};
 
 use crate::server::dto::PageDto;
 
@@ -207,7 +208,7 @@ impl Display for WaitingModeAndSpeed {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Page {
     line: u8,
     page: char,

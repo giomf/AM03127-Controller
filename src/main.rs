@@ -4,6 +4,7 @@
 #[deny(clippy::mem_forget)]
 mod am03127;
 mod server;
+mod storage;
 mod uart;
 
 use am03127::DEFAULT_PANEL_ID;
@@ -21,7 +22,8 @@ use esp_wifi::{
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
-use server::{AppProps, AppState, SharedUart, web_task};
+use server::{AppProps, AppState, SharedStorage, SharedUart, web_task};
+use storage::NvsStorage;
 use uart::Uart;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
@@ -89,16 +91,24 @@ async fn main(spawner: Spawner) {
     uart.init(DEFAULT_PANEL_ID)
         .await
         .expect("Failed to inittialze uart");
-
     let shared_uart =
         SharedUart(make_static!(Mutex<CriticalSectionRawMutex, Uart<'static>>, Mutex::new(uart)));
+
+    let nvs_storage = NvsStorage::new();
+    let shared_storage = SharedStorage(make_static!(
+        Mutex<CriticalSectionRawMutex, NvsStorage>, Mutex::new(nvs_storage)
+    ));
+
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
             id,
             network_stack,
             app,
             config,
-            AppState { shared_uart },
+            AppState {
+                shared_uart,
+                shared_storage,
+            },
         ));
     }
 }

@@ -5,6 +5,7 @@ use crate::am03127::page_content::formatting::{Clock as ClockFormat, ColumnStart
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::am03127::{CommandAble, DEFAULT_PANEL_ID};
+use crate::storage::NvsStorage;
 use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::Page, uart::Uart};
 use core::convert::From;
 use core::fmt::Write;
@@ -25,14 +26,23 @@ const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 #[derive(Clone, Copy)]
 pub struct SharedUart(pub &'static Mutex<CriticalSectionRawMutex, Uart<'static>>);
 
+#[derive(Clone, Copy)]
+pub struct SharedStorage(pub &'static Mutex<CriticalSectionRawMutex, NvsStorage>);
+
 #[derive(Clone)]
 pub struct AppState {
     pub shared_uart: SharedUart,
+    pub shared_storage: SharedStorage,
 }
 
 impl picoserve::extract::FromRef<AppState> for SharedUart {
     fn from_ref(state: &AppState) -> Self {
         state.shared_uart
+    }
+}
+impl picoserve::extract::FromRef<AppState> for SharedStorage {
+    fn from_ref(state: &AppState) -> Self {
+        state.shared_storage
     }
 }
 
