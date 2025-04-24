@@ -212,10 +212,10 @@ impl Display for WaitingModeAndSpeed {
 pub struct Page {
     line: u8,
     page: char,
-    leading: Leading,
-    lagging: Lagging,
-    waiting_mode_and_speed: WaitingModeAndSpeed,
-    message: String<STRING_SIZE>,
+    pub leading: Leading,
+    pub lagging: Lagging,
+    pub waiting_mode_and_speed: WaitingModeAndSpeed,
+    pub message: String<STRING_SIZE>,
 }
 
 impl CommandAble for Page {}

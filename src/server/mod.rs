@@ -14,6 +14,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use heapless::String;
 use picoserve::extract::Json;
+use picoserve::response::StatusCode;
 use picoserve::routing::{get_service, parse_path_segment, post};
 use picoserve::{
     AppRouter, AppWithStateBuilder,
@@ -22,6 +23,7 @@ use picoserve::{
 };
 
 const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
+const LOGGER_NAME: &str = "HTTP Server";
 
 #[derive(Clone, Copy)]
 pub struct SharedUart(pub &'static Mutex<CriticalSectionRawMutex, Uart<'static>>);
@@ -52,14 +54,14 @@ pub struct AppProps;
 impl AppProps {
     pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         picoserve::Router::new().route(
-            "/",
+            "",
             get_service(picoserve::response::File::html(include_str!("index.html"))),
         )
     }
 
     pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         picoserve::Router::new().route(
-            "/clock",
+            "",
             get(
                 |State(SharedUart(shared_uart)): State<SharedUart>| async move {
                     log::info!("Display clock");
@@ -106,14 +108,30 @@ impl AppProps {
 
     pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         picoserve::Router::new().route(
-            ("/page", parse_path_segment::<char>()),
-            post(
-                |page_id,
-                 State(SharedUart(shared_uart)): State<SharedUart>,
-                 Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
-                    log::info!("Setting page {page_id}");
+            ("", parse_path_segment::<char>()),
+            get(
+                |page_id: char, State(SharedStorage(shared_storage)): State<SharedStorage>| async move {
+                    let page_id = page_id.to_ascii_uppercase();
+                    log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
 
-                    let command = Page::from_dto_with_id(page_id, page).command(DEFAULT_PANEL_ID);
+                    match shared_storage.lock().await.read(page_id).await {
+                        Some(page) => Ok(Json(page)),
+                        None => Err((StatusCode::NOT_FOUND, "Page not found")),
+                    }
+                },
+            )
+            .post(
+                |page_id: char,
+                 State(SharedUart(shared_uart)): State<SharedUart>,
+                 State(SharedStorage(shared_storage)): State<SharedStorage>,
+                 Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page_dto)| async move {
+                    let page_id = page_id.to_ascii_uppercase();
+                    log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
+                    log::debug!("{LOGGER_NAME}: {:?}", page_dto);
+
+                    let page = Page::from_dto_with_id(page_id, page_dto);
+                    log::debug!("{LOGGER_NAME}: {:?}", page);
+                    let command = page.command(DEFAULT_PANEL_ID);
 
                     shared_uart
                         .lock()
@@ -121,11 +139,17 @@ impl AppProps {
                         .write(command.as_bytes())
                         .await
                         .unwrap();
+
+                    shared_storage.lock().await.write(page_id, page).await;
                 },
             )
             .delete(
-                |page_id, State(SharedUart(shared_uart)): State<SharedUart>| async move {
-                    log::info!("Delete page {page_id}");
+                |page_id: char,
+                 State(SharedUart(shared_uart)): State<SharedUart>,
+                 State(SharedStorage(shared_storage)): State<SharedStorage>| async move {
+                    let page_id = page_id.to_ascii_uppercase();
+                    log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
+
                     let command = DeletePage::default()
                         .page_id(page_id)
                         .command(DEFAULT_PANEL_ID);
@@ -136,6 +160,8 @@ impl AppProps {
                         .write(command.as_bytes())
                         .await
                         .unwrap();
+
+                    shared_storage.lock().await.delete(page_id).await;
                 },
             ),
         )
@@ -143,7 +169,7 @@ impl AppProps {
 
     pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         picoserve::Router::new().route(
-            ("/schedule", parse_path_segment::<char>()),
+            ("", parse_path_segment::<char>()),
             post(
                 |schedule_id,
                  State(SharedUart(shared_uart)): State<SharedUart>,
@@ -184,9 +210,9 @@ impl AppWithStateBuilder for AppProps {
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
         picoserve::Router::new()
             .nest("/", Self::static_router())
-            .nest("/", Self::clock_router())
-            .nest("/", Self::page_router())
-            .nest("/", Self::schedule_router())
+            .nest("/page", Self::page_router())
+            .nest("/schedule", Self::schedule_router())
+            .nest("/clock", Self::clock_router())
     }
 }
 

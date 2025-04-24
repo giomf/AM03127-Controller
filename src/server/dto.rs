@@ -1,9 +1,12 @@
 use heapless::String;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::am03127::page_content::{Lagging, Leading, WaitingModeAndSpeed};
+use crate::am03127::{
+    STRING_SIZE,
+    page_content::{Lagging, Leading, Page, WaitingModeAndSpeed},
+};
 
-#[derive(Default, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct DateTimeDto {
     pub day: u8,
     pub hour: u8,
@@ -14,10 +17,10 @@ pub struct DateTimeDto {
     pub week: u8,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct PageDto {
-    pub text: String<32>,
+    pub text: String<STRING_SIZE>,
     #[serde(default)]
     pub leading: Leading,
     #[serde(default)]
@@ -26,7 +29,18 @@ pub struct PageDto {
     pub waiting_mode_and_speed: WaitingModeAndSpeed,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+impl From<Page> for PageDto {
+    fn from(page: Page) -> Self {
+        PageDto {
+            text: page.message,
+            leading: page.leading,
+            lagging: page.lagging,
+            waiting_mode_and_speed: page.waiting_mode_and_speed,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ScheduleDto {
     pub from: DateTimeDto,

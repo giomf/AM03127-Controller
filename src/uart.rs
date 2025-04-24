@@ -12,6 +12,7 @@ use crate::am03127;
 
 const BAUD_RATE: u32 = 9600;
 const READ_BUFFER_SIZE: usize = 32;
+const LOGGER_NAME: &str = "UART";
 
 pub struct Uart<'a> {
     uart: UartDriver<'a, Async>,
@@ -39,9 +40,10 @@ impl<'a> Uart<'a> {
     }
 
     pub async fn init(&mut self, id: u8) -> Result<()> {
-        log::info!("Initialize panel with ID: {id}");
+        log::info!("{LOGGER_NAME}: Initialize panel with ID: {id}");
         let command = am03127::set_id(id);
-        self.write(&command.as_bytes()).await
+        self.uart.write_all(&command.as_bytes()).await?;
+        Ok(())
     }
 
     pub async fn write(&mut self, data: &[u8]) -> Result<()> {
@@ -49,9 +51,9 @@ impl<'a> Uart<'a> {
         let mut buffer = [0u8; READ_BUFFER_SIZE];
         let bytes_read = self.uart.read_async(&mut buffer).await?;
 
-        log::info!("Receiving {bytes_read} bytes");
+        log::debug!("{LOGGER_NAME}: Receiving {bytes_read} bytes");
         let response = core::str::from_utf8(&buffer[..bytes_read])?;
-        log::info!("Interpreting response as: {}", response);
+        log::debug!("{LOGGER_NAME}: Interpreting response as: {}", response);
 
         if response.starts_with("ACK") {
             return Ok(());

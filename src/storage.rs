@@ -1,15 +1,40 @@
-use core::ops::Range;
-
 use crate::am03127::page_content::Page;
+use core::ops::Range;
 use embassy_embedded_hal::adapter::BlockingAsync;
 use esp_storage::FlashStorage;
-use heapless::Vec;
-use sequential_storage::{cache::NoCache, map};
+use sequential_storage::{
+    cache::NoCache,
+    map::{self, SerializationError, Value},
+};
 
 const LOGGER_NAME: &str = "NvsStorage";
 const NVS_FLASH_BEGIN: u32 = 0x9000;
 const NVS_FLASH_SIZE: u32 = 0x4000;
-const ITEM_SIZE: usize = core::mem::size_of::<Option<Page>>();
+const KEY_SIZE: usize = core::mem::size_of::<u8>();
+const VALUE_SIZE: usize = core::mem::size_of::<Page>();
+const ENTRY_SIZE: usize = KEY_SIZE + VALUE_SIZE;
+
+impl<'a> Value<'a> for Page {
+    fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
+        if buffer.len() < core::mem::size_of::<Self>() {
+            return Err(SerializationError::BufferTooSmall);
+        }
+        match postcard::to_slice(&self, buffer) {
+            Ok(used) => Ok(used.len()),
+            Err(_) => Err(SerializationError::InvalidData),
+        }
+    }
+
+    fn deserialize_from(buffer: &'a [u8]) -> Result<Self, map::SerializationError>
+    where
+        Self: Sized,
+    {
+        match postcard::from_bytes::<Self>(&buffer) {
+            Ok(page) => Ok(page),
+            Err(_) => Err(SerializationError::InvalidData),
+        }
+    }
+}
 
 pub struct NvsStorage {
     flash: BlockingAsync<FlashStorage>,
@@ -32,10 +57,10 @@ impl NvsStorage {
     }
 
     pub async fn read(&mut self, page_id: char) -> Option<Page> {
-        log::info!("{LOGGER_NAME}: Reading page {page_id}");
+        log::info!("{LOGGER_NAME}: Reading page \"{page_id}\"");
 
-        let mut data_buffer = [0; ITEM_SIZE];
-        map::fetch_item::<u8, [u8; ITEM_SIZE], _>(
+        let mut data_buffer = [0; ENTRY_SIZE];
+        let page = map::fetch_item::<u8, Page, _>(
             &mut self.flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
@@ -43,33 +68,32 @@ impl NvsStorage {
             &(page_id as u8),
         )
         .await
-        .unwrap();
-        postcard::from_bytes(&data_buffer).expect("Failed to deserialize page")
+        .expect("Failed to read page");
+
+        log::debug!("{LOGGER_NAME}: read {:?}", page);
+        page
     }
+
     pub async fn write(&mut self, page_id: char, page: Page) {
-        log::info!("{LOGGER_NAME}: Writing page {page_id}");
+        log::info!("{LOGGER_NAME}: Writing page \"{page_id}\"");
 
-        let data: Vec<u8, ITEM_SIZE> =
-            postcard::to_vec(&Some(page)).expect("Failed to serialize page");
-        let mut data_buffer = [0u8; ITEM_SIZE];
-
+        let mut data_buffer = [0; ENTRY_SIZE];
         map::store_item(
             &mut self.flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
             &mut data_buffer,
             &(page_id as u8),
-            &data.as_slice(),
+            &page,
         )
         .await
-        .unwrap();
+        .expect("Failed to write page");
     }
 
     pub async fn delete(&mut self, page_id: char) {
-        log::info!("{LOGGER_NAME}: Deleting page {page_id}");
+        log::info!("{LOGGER_NAME}: Deleting page \"{page_id}\"");
 
-        let mut data_buffer = [0u8; ITEM_SIZE];
-
+        let mut data_buffer = [0; ENTRY_SIZE];
         map::remove_item(
             &mut self.flash,
             self.flash_range.clone(),
@@ -78,6 +102,6 @@ impl NvsStorage {
             &(page_id as u8),
         )
         .await
-        .unwrap();
+        .expect("Failed to delete page");
     }
 }

@@ -10,18 +10,18 @@ use core::fmt::{Display, Write};
 use heapless::String;
 
 // Constant for string size
-pub const STRING_SIZE: usize = 64;
+pub const STRING_SIZE: usize = 32;
 pub const DEFAULT_PANEL_ID: u8 = 1;
 pub const DEFAULT_PAGE: char = 'A';
 pub const DEFAULT_LINE: u8 = 1;
 pub const DEFAULT_SCHEDULE: char = 'A';
 
 pub trait CommandAble: Display {
-    fn command(&self, id: u8) -> String<STRING_SIZE> {
-        let mut payload = String::<STRING_SIZE>::new();
+    fn command(&self, id: u8) -> String<64> {
+        let mut payload = String::<64>::new();
         write!(payload, "{}", self).unwrap();
         let checksum = checksum(&payload);
-        let mut buffer = String::<STRING_SIZE>::new();
+        let mut buffer = String::<64>::new();
         write!(&mut buffer, "<ID{:02X}>{}{:02X}<E>", id, payload, checksum).unwrap();
         buffer
     }
