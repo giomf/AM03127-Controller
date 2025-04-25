@@ -11,7 +11,6 @@ use heapless::String;
 
 // Constant for string size
 pub const STRING_SIZE: usize = 32;
-pub const DEFAULT_PANEL_ID: u8 = 1;
 pub const DEFAULT_PAGE: char = 'A';
 pub const DEFAULT_LINE: u8 = 1;
 pub const DEFAULT_SCHEDULE: char = 'A';

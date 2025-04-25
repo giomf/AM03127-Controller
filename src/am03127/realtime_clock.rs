@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
+use serde::{Deserialize, Serialize};
+
 use crate::server::dto::DateTimeDto;
 
 use super::CommandAble;
 use core::fmt::Display;
 
-#[derive(Default)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct DateTime {
     year: u8,
     week: u8,

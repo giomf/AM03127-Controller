@@ -2,6 +2,7 @@ use crate::am03127::page_content::Page;
 use core::ops::Range;
 use embassy_embedded_hal::adapter::BlockingAsync;
 use esp_storage::FlashStorage;
+use heapless::Vec;
 use sequential_storage::{
     cache::NoCache,
     map::{self, SerializationError, Value},
@@ -13,6 +14,8 @@ const NVS_FLASH_SIZE: u32 = 0x4000;
 const KEY_SIZE: usize = core::mem::size_of::<u8>();
 const VALUE_SIZE: usize = core::mem::size_of::<Page>();
 const ENTRY_SIZE: usize = KEY_SIZE + VALUE_SIZE;
+
+const MAX_PAGES: usize = 24;
 
 impl<'a> Value<'a> for Page {
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
@@ -72,6 +75,33 @@ impl NvsStorage {
 
         log::debug!("{LOGGER_NAME}: read {:?}", page);
         page
+    }
+
+    pub async fn read_all(&mut self) -> Vec<Page, MAX_PAGES> {
+        log::info!("{LOGGER_NAME}: Reading all pages");
+
+        let mut cache = NoCache::new();
+
+        let mut data_buffer = [0; ENTRY_SIZE];
+        let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
+            &mut self.flash,
+            self.flash_range.clone(),
+            &mut cache,
+            &mut data_buffer,
+        )
+        .await
+        .expect("Failed to read page");
+
+        let mut pages = Vec::<Page, MAX_PAGES>::new();
+
+        while let Some((_, page)) = pages_iterator
+            .next::<u8, Page>(&mut data_buffer)
+            .await
+            .unwrap()
+        {
+            pages.push(page).expect("Failed to fill pages");
+        }
+        pages
     }
 
     pub async fn write(&mut self, page_id: char, page: Page) {

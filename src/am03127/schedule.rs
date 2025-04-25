@@ -1,4 +1,5 @@
 use heapless::{String, Vec};
+use serde::{Deserialize, Serialize};
 
 use crate::server::dto::ScheduleDto;
 
@@ -7,6 +8,7 @@ use core::fmt::Display;
 
 const PAGES_MAX_CHARS: usize = 32;
 
+#[derive(Deserialize, Serialize)]
 pub struct Schedule {
     id: char,
     from: DateTime,

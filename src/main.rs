@@ -3,11 +3,11 @@
 #![feature(impl_trait_in_assoc_type)]
 #[deny(clippy::mem_forget)]
 mod am03127;
+mod panel;
 mod server;
 mod storage;
 mod uart;
 
-use am03127::DEFAULT_PANEL_ID;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -21,8 +21,9 @@ use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
+use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
-use server::{AppProps, AppState, SharedStorage, SharedUart, web_task};
+use server::{AppProps, AppState, SharedPanel, web_task};
 use storage::NvsStorage;
 use uart::Uart;
 
@@ -87,16 +88,10 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
-    let mut uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
-    uart.init(DEFAULT_PANEL_ID)
-        .await
-        .expect("Failed to inittialze uart");
-    let shared_uart =
-        SharedUart(make_static!(Mutex<CriticalSectionRawMutex, Uart<'static>>, Mutex::new(uart)));
-
+    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
     let nvs_storage = NvsStorage::new();
-    let shared_storage = SharedStorage(make_static!(
-        Mutex<CriticalSectionRawMutex, NvsStorage>, Mutex::new(nvs_storage)
+    let shared_panel = SharedPanel(make_static!(
+        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart, nvs_storage))
     ));
 
     for id in 0..WEB_TASK_POOL_SIZE {
@@ -105,10 +100,7 @@ async fn main(spawner: Spawner) {
             network_stack,
             app,
             config,
-            AppState {
-                shared_uart,
-                shared_storage,
-            },
+            AppState { shared_panel },
         ));
     }
 }
