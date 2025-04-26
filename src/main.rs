@@ -24,7 +24,6 @@ use esp_wifi::{
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
-use storage::NvsStorage;
 use uart::Uart;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
@@ -89,9 +88,8 @@ async fn main(spawner: Spawner) {
     );
 
     let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
-    let nvs_storage = NvsStorage::new();
     let shared_panel = SharedPanel(make_static!(
-        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart, nvs_storage))
+        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
     ));
     shared_panel
         .0

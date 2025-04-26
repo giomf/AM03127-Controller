@@ -9,7 +9,10 @@ use crate::{
         realtime_clock::DateTime,
         schedule::Schedule,
     },
-    storage::NvsStorage,
+    storage::{
+        NvsStorageSection, PAGE_STORAGE_BEGIN, PAGE_STORAGE_SIZE, SCHEDULE_STORAGE_BEGIN,
+        SCHEDULE_STORAGE_SIZE,
+    },
     uart::Uart,
 };
 use anyhow::Result;
@@ -21,12 +24,20 @@ const LOGGER_NAME: &str = "Panel";
 
 pub struct Panel<'a> {
     uart: Uart<'a>,
-    storage: NvsStorage,
+    page_storage: NvsStorageSection<Page>,
+    schedule_storage: NvsStorageSection<Schedule>,
 }
 
 impl<'a> Panel<'a> {
-    pub fn new(uart: Uart<'a>, storage: NvsStorage) -> Self {
-        Self { uart, storage }
+    pub fn new(uart: Uart<'a>) -> Self {
+        let page_storage = NvsStorageSection::new(PAGE_STORAGE_BEGIN, PAGE_STORAGE_SIZE);
+        let schedule_storage =
+            NvsStorageSection::new(SCHEDULE_STORAGE_BEGIN, SCHEDULE_STORAGE_SIZE);
+        Self {
+            uart,
+            page_storage,
+            schedule_storage,
+        }
     }
 
     pub async fn init(&mut self) -> Result<()> {
@@ -55,7 +66,9 @@ impl<'a> Panel<'a> {
     pub async fn set_clock(&mut self, date_time: DateTime) -> Result<()> {
         log::info!("{LOGGER_NAME}: Setting clock");
         let command = date_time.command(DEFAULT_PANEL_ID);
-        self.uart.write(command.as_bytes()).await
+        self.uart.write(command.as_bytes()).await?;
+
+        Ok(())
     }
 
     pub async fn set_page(&mut self, page_id: char, page: Page) -> Result<()> {
@@ -65,42 +78,51 @@ impl<'a> Panel<'a> {
         let command = page.command(DEFAULT_PANEL_ID);
 
         self.uart.write(command.as_bytes()).await?;
-        self.storage.write(page_id, page).await?;
+        self.page_storage.write(page_id, page).await?;
 
         Ok(())
     }
 
     pub async fn get_page(&mut self, page_id: char) -> Result<Option<Page>> {
-        self.storage.read(page_id).await
+        log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
+        self.page_storage.read(page_id).await
     }
 
     pub async fn delete_page(&mut self, page_id: char) -> Result<()> {
+        log::info!("{LOGGER_NAME}: Deleting page \"{page_id}\"");
+
         let command = DeletePage::default()
             .page_id(page_id)
             .command(DEFAULT_PANEL_ID);
 
         self.uart.write(command.as_bytes()).await?;
-        self.storage.delete(page_id).await?;
+        self.page_storage.delete(page_id).await?;
 
         Ok(())
     }
 
     pub async fn set_schedule(&mut self, schedule_id: char, schedule: Schedule) -> Result<()> {
+        log::info!("{LOGGER_NAME}: Setting schedule \"{schedule_id}\"");
+        log::debug!("{LOGGER_NAME}: {:?}", schedule);
+
         let command = schedule.command(DEFAULT_PANEL_ID);
         self.uart.write(command.as_bytes()).await?;
-        //TODO store schedue
+        self.schedule_storage.write(schedule_id, schedule).await?;
 
         Ok(())
     }
 
     pub async fn get_schedule(&mut self, schedule_id: char) -> Result<Option<Schedule>> {
-        todo!()
+        log::info!("{LOGGER_NAME}: Getting schedule \"{schedule_id}\"");
+        self.schedule_storage.read(schedule_id).await
     }
 
     pub async fn delete_schedule(&mut self, schedule_id: char) -> Result<()> {
+        log::info!("{LOGGER_NAME}: Deleting page \"{schedule_id}\"");
+
         let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
         self.uart.write(command.as_bytes()).await?;
-        //TODO store schedue
+        self.schedule_storage.delete(schedule_id).await?;
 
         Ok(())
     }

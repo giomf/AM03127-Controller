@@ -7,7 +7,7 @@ use crate::server::dto::DateTimeDto;
 use super::CommandAble;
 use core::fmt::Display;
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct DateTime {
     year: u8,
     week: u8,

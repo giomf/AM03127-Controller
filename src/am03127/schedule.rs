@@ -8,7 +8,7 @@ use core::fmt::Display;
 
 const PAGES_MAX_CHARS: usize = 32;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Schedule {
     id: char,
     from: DateTime,
