@@ -1,4 +1,5 @@
 use crate::am03127::page_content::Page;
+use anyhow::{Result, anyhow};
 use core::ops::Range;
 use embassy_embedded_hal::adapter::BlockingAsync;
 use esp_storage::FlashStorage;
@@ -59,7 +60,7 @@ impl NvsStorage {
         NvsStorage { flash, flash_range }
     }
 
-    pub async fn read(&mut self, page_id: char) -> Option<Page> {
+    pub async fn read(&mut self, page_id: char) -> Result<Option<Page>> {
         log::info!("{LOGGER_NAME}: Reading page \"{page_id}\"");
 
         let mut data_buffer = [0; ENTRY_SIZE];
@@ -71,13 +72,13 @@ impl NvsStorage {
             &(page_id as u8),
         )
         .await
-        .expect("Failed to read page");
+        .map_err(|_| anyhow!("Failed to read page from storage"))?;
 
         log::debug!("{LOGGER_NAME}: read {:?}", page);
-        page
+        Ok(page)
     }
 
-    pub async fn read_all(&mut self) -> Vec<Page, MAX_PAGES> {
+    pub async fn read_all(&mut self) -> Result<Vec<Page, MAX_PAGES>> {
         log::info!("{LOGGER_NAME}: Reading all pages");
 
         let mut cache = NoCache::new();
@@ -90,21 +91,21 @@ impl NvsStorage {
             &mut data_buffer,
         )
         .await
-        .expect("Failed to read page");
+        .map_err(|_| anyhow!("Failed to read page from storage"))?;
 
         let mut pages = Vec::<Page, MAX_PAGES>::new();
 
         while let Some((_, page)) = pages_iterator
             .next::<u8, Page>(&mut data_buffer)
             .await
-            .unwrap()
+            .map_err(|_| anyhow!("Failed to read page from storage"))?
         {
             pages.push(page).expect("Failed to fill pages");
         }
-        pages
+        Ok(pages)
     }
 
-    pub async fn write(&mut self, page_id: char, page: Page) {
+    pub async fn write(&mut self, page_id: char, page: Page) -> Result<()> {
         log::info!("{LOGGER_NAME}: Writing page \"{page_id}\"");
 
         let mut data_buffer = [0; ENTRY_SIZE];
@@ -117,10 +118,12 @@ impl NvsStorage {
             &page,
         )
         .await
-        .expect("Failed to write page");
+        .map_err(|_| anyhow!("Failed to write page to storage"))?;
+
+        Ok(())
     }
 
-    pub async fn delete(&mut self, page_id: char) {
+    pub async fn delete(&mut self, page_id: char) -> Result<()> {
         log::info!("{LOGGER_NAME}: Deleting page \"{page_id}\"");
 
         let mut data_buffer = [0; ENTRY_SIZE];
@@ -132,6 +135,8 @@ impl NvsStorage {
             &(page_id as u8),
         )
         .await
-        .expect("Failed to delete page");
+        .map_err(|_| anyhow!("Failed to delete page from storage"))?;
+
+        Ok(())
     }
 }

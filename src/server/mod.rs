@@ -52,7 +52,12 @@ impl AppProps {
                 |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                     log::info!("Display clock");
 
-                    shared_panel.lock().await.display_clock('A').await;
+                    shared_panel
+                        .lock()
+                        .await
+                        .display_clock('A')
+                        .await
+                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             )
             .post(
@@ -61,7 +66,12 @@ impl AppProps {
                     log::info!("Set clock");
                     let date_time = DateTime::from(date_time_dto);
 
-                    shared_panel.lock().await.set_clock(date_time).await;
+                    shared_panel
+                        .lock()
+                        .await
+                        .set_clock(date_time)
+                        .await
+                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             ),
         )
@@ -75,9 +85,14 @@ impl AppProps {
                     let page_id = page_id.to_ascii_uppercase();
                     log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
 
-                    match shared_panel.lock().await.get_page(page_id).await {
-                        Some(page) => Ok(Json(page)),
-                        None => Err((StatusCode::NOT_FOUND, "Page not found")),
+                    let mut panel = shared_panel.lock().await;
+                    if let Ok(page) = panel.get_page(page_id).await {
+                        match page {
+                            Some(page) => Ok(Json(page)),
+                            None => Err((StatusCode::NOT_FOUND, "Page not found")),
+                        }
+                    } else {
+                        Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to get Page"))
                     }
                 },
             )
@@ -90,7 +105,12 @@ impl AppProps {
                     log::debug!("{LOGGER_NAME}: {:?}", page_dto);
 
                     let page = Page::from_dto_with_id(page_id, page_dto);
-                    shared_panel.lock().await.set_page(page_id, page).await;
+                    shared_panel
+                        .lock()
+                        .await
+                        .set_page(page_id, page)
+                        .await
+                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             )
             .delete(
@@ -98,7 +118,12 @@ impl AppProps {
                     let page_id = page_id.to_ascii_uppercase();
                     log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
-                    shared_panel.lock().await.delete_page(page_id).await;
+                    shared_panel
+                        .lock()
+                        .await
+                        .delete_page(page_id)
+                        .await
+                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             ),
         )
@@ -112,10 +137,16 @@ impl AppProps {
                     let schedule_id = page_id.to_ascii_uppercase();
                     log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
 
-                    match shared_panel.lock().await.get_schedule(schedule_id).await {
-                        Some(schedule) => Ok(Json(schedule)),
-                        None => Err((StatusCode::NOT_FOUND, "Schedule not found")),
+                    let mut panel = shared_panel.lock().await;
+                    if let Ok(schedule) = panel.get_schedule(schedule_id).await {
+                        match schedule {
+                            Some(schedule) => Ok(Json(schedule)),
+                            None => Err((StatusCode::NOT_FOUND, "Schedule not found")),
+                        }
+                    }else {
+                        Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to get schedule"))
                     }
+
                 },
             ).
             post(
@@ -129,7 +160,7 @@ impl AppProps {
                     shared_panel
                         .lock()
                         .await
-                        .set_schedule(schedule_id, schedule).await;
+                        .set_schedule(schedule_id, schedule).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             )
             .delete(
@@ -137,7 +168,7 @@ impl AppProps {
                     let schedule_id = schedule_id.to_ascii_uppercase();
                     log::info!("Deleting schedule {schedule_id}");
 
-                    shared_panel.lock().await.delete_schedule(schedule_id).await;
+                    shared_panel.lock().await.delete_schedule(schedule_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             ),
         )

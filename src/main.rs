@@ -93,6 +93,13 @@ async fn main(spawner: Spawner) {
     let shared_panel = SharedPanel(make_static!(
         Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart, nvs_storage))
     ));
+    shared_panel
+        .0
+        .lock()
+        .await
+        .init()
+        .await
+        .expect("Failed to initialze panel");
 
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(

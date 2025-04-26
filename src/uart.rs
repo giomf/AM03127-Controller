@@ -58,7 +58,7 @@ impl<'a> Uart<'a> {
         if response.starts_with("ACK") {
             return Ok(());
         } else if response.starts_with("NACK") {
-            bail!("NACK");
+            bail!("Failed get positive response from uart");
         }
 
         Ok(())
