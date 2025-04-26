@@ -4,6 +4,7 @@ use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::panel::Panel;
 use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::Page};
+use anyhow::Result;
 use core::convert::From;
 use dto::{DateTimeDto, PageDto, ScheduleDto};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -50,7 +51,7 @@ impl AppProps {
             "",
             get(
                 |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                    log::info!("Display clock");
+                    log::info!("{LOGGER_NAME}: Display clock");
 
                     shared_panel
                         .lock()
@@ -63,7 +64,7 @@ impl AppProps {
             .post(
                 |State(SharedPanel(shared_panel)): State<SharedPanel>,
                  Json::<DateTimeDto, JSON_DESERIALIZE_BUFFER_SIZE>(date_time_dto)| async move {
-                    log::info!("Set clock");
+                    log::info!("{LOGGER_NAME}: Set clock");
                     let date_time = DateTime::from(date_time_dto);
 
                     shared_panel
@@ -82,8 +83,10 @@ impl AppProps {
             ("", parse_path_segment::<char>()),
             get(
                 |page_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                    let page_id = page_id.to_ascii_uppercase();
                     log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
+                    if !is_id_valid(page_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Page id not valid"));
+                    }
 
                     let mut panel = shared_panel.lock().await;
                     if let Ok(page) = panel.get_page(page_id).await {
@@ -100,8 +103,10 @@ impl AppProps {
                 |page_id: char,
                  State(SharedPanel(shared_panel)): State<SharedPanel>,
                  Json::<PageDto, JSON_DESERIALIZE_BUFFER_SIZE>(page_dto)| async move {
-                    let page_id = page_id.to_ascii_uppercase();
                     log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
+                    if !is_id_valid(page_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Page id not valid"));
+                    }
                     log::debug!("{LOGGER_NAME}: {:?}", page_dto);
 
                     let page = Page::from_dto_with_id(page_id, page_dto);
@@ -115,7 +120,9 @@ impl AppProps {
             )
             .delete(
                 |page_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                    let page_id = page_id.to_ascii_uppercase();
+                    if !is_id_valid(page_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Page id not valid"));
+                    }
                     log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
                     shared_panel
@@ -133,9 +140,11 @@ impl AppProps {
         picoserve::Router::new().route(
             ("", parse_path_segment::<char>()),
             get(
-                |page_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                    let schedule_id = page_id.to_ascii_uppercase();
+                |schedule_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                     log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
+                    if !is_id_valid(schedule_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Schedule id not valid"));
+                    }
 
                     let mut panel = shared_panel.lock().await;
                     if let Ok(schedule) = panel.get_schedule(schedule_id).await {
@@ -153,8 +162,10 @@ impl AppProps {
                 |schedule_id: char,
                  State(SharedPanel(shared_panel)): State<SharedPanel>,
                  Json::<ScheduleDto, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
-                    let schedule_id = schedule_id.to_ascii_uppercase();
-                    log::info!("Setting schedule {schedule_id}");
+                    log::info!("{LOGGER_NAME}: Setting schedule {schedule_id}");
+                    if !is_id_valid(schedule_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Schedule id not valid"));
+                    }
                     let schedule = Schedule::from_dto_with_id(schedule, schedule_id);
 
                     shared_panel
@@ -165,14 +176,20 @@ impl AppProps {
             )
             .delete(
                 |schedule_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                    let schedule_id = schedule_id.to_ascii_uppercase();
-                    log::info!("Deleting schedule {schedule_id}");
+                    log::info!("{LOGGER_NAME}: Deleting schedule {schedule_id}");
+                    if !is_id_valid(schedule_id) {
+                        return Err((StatusCode::BAD_REQUEST, "Schedule id not valid"));
+                    }
 
                     shared_panel.lock().await.delete_schedule(schedule_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             ),
         )
     }
+}
+
+fn is_id_valid(id: char) -> bool {
+    id > 'A' && id < 'Z'
 }
 
 impl AppWithStateBuilder for AppProps {
