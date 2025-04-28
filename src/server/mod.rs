@@ -7,8 +7,6 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use picoserve::{AppRouter, AppWithStateBuilder, routing::PathRouter};
 
-const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
-
 #[derive(Clone, Copy)]
 pub struct SharedPanel(pub &'static Mutex<CriticalSectionRawMutex, Panel<'static>>);
 
@@ -36,6 +34,7 @@ impl AppWithStateBuilder for AppProps {
             .nest("/page", router::page_router())
             .nest("/pages", router::pages_router())
             .nest("/schedule", router::schedule_router())
+            .nest("/schedules", router::schedules_router())
             .nest("/clock", router::clock_router())
     }
 }

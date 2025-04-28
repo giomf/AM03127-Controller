@@ -1,4 +1,5 @@
-use super::{AppState, JSON_DESERIALIZE_BUFFER_SIZE, SharedPanel, dto};
+use super::{AppState, SharedPanel, dto};
+use crate::JSON_DESERIALIZE_BUFFER_SIZE;
 use crate::am03127::page_content::Page;
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
@@ -177,6 +178,20 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
     )
 }
 
+pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+    picoserve::Router::new().route(
+        "",
+        get(
+            |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
+                let mut panel = shared_panel.lock().await;
+                match panel.get_schedules().await {
+                    Ok(schedules) => Ok(Json(schedules)),
+                    Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to get schedules")),
+                }
+            },
+        ),
+    )
+}
 fn is_id_valid(id: char) -> bool {
     id > 'A' && id < 'Z'
 }

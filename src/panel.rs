@@ -20,8 +20,9 @@ use core::fmt::Write;
 use heapless::{String, Vec};
 
 const LOGGER_NAME: &str = "Panel";
-pub const DEFAULT_PANEL_ID: u8 = 1;
-const MAX_PAGES: usize = 24;
+const DEFAULT_PANEL_ID: u8 = 1;
+const MAX_PAGES: usize = 24; // A - Z
+const MAX_SCHEDULES: usize = 5; // A - E
 
 pub struct Panel<'a> {
     uart: Uart<'a>,
@@ -121,6 +122,11 @@ impl<'a> Panel<'a> {
     pub async fn get_schedule(&mut self, schedule_id: char) -> Result<Option<Schedule>> {
         log::info!("{LOGGER_NAME}: Getting schedule \"{schedule_id}\"");
         self.schedule_storage.read(schedule_id).await
+    }
+
+    pub async fn get_schedules(&mut self) -> Result<Vec<Schedule, MAX_SCHEDULES>> {
+        log::info!("{LOGGER_NAME}: Getting schedules");
+        self.schedule_storage.read_all().await
     }
 
     pub async fn delete_schedule(&mut self, schedule_id: char) -> Result<()> {
