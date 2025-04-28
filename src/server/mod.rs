@@ -4,7 +4,6 @@ use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::panel::Panel;
 use crate::{WEB_TASK_POOL_SIZE, am03127::page_content::Page};
-use anyhow::Result;
 use core::convert::From;
 use dto::{DateTimeDto, PageDto, ScheduleDto};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -53,9 +52,8 @@ impl AppProps {
                 |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                     log::info!("{LOGGER_NAME}: Display clock");
 
-                    shared_panel
-                        .lock()
-                        .await
+                    let mut panel = shared_panel.lock().await;
+                    panel
                         .display_clock('A')
                         .await
                         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
@@ -67,9 +65,8 @@ impl AppProps {
                     log::info!("{LOGGER_NAME}: Set clock");
                     let date_time = DateTime::from(date_time_dto);
 
-                    shared_panel
-                        .lock()
-                        .await
+                    let mut panel = shared_panel.lock().await;
+                    panel
                         .set_clock(date_time)
                         .await
                         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
@@ -110,9 +107,8 @@ impl AppProps {
                     log::debug!("{LOGGER_NAME}: {:?}", page_dto);
 
                     let page = Page::from_dto_with_id(page_id, page_dto);
-                    shared_panel
-                        .lock()
-                        .await
+                    let mut panel = shared_panel.lock().await;
+                    panel
                         .set_page(page_id, page)
                         .await
                         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
@@ -125,17 +121,30 @@ impl AppProps {
                     }
                     log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
-                    shared_panel
-                        .lock()
-                        .await
+                    let mut panel = shared_panel.lock().await;
+                    panel
                         .delete_page(page_id)
                         .await
-                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
+                        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete page"))
                 },
             ),
         )
     }
 
+    pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+        picoserve::Router::new().route(
+            "",
+            get(
+                |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
+                    let mut panel = shared_panel.lock().await;
+                    match panel.get_pages().await {
+                        Ok(pages) => Ok(Json(pages)),
+                        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to get pages")),
+                    }
+                },
+            ),
+        )
+    }
     pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         picoserve::Router::new().route(
             ("", parse_path_segment::<char>()),
@@ -168,10 +177,8 @@ impl AppProps {
                     }
                     let schedule = Schedule::from_dto_with_id(schedule, schedule_id);
 
-                    shared_panel
-                        .lock()
-                        .await
-                        .set_schedule(schedule_id, schedule).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
+                    let mut panel = shared_panel.lock().await;
+                    panel.set_schedule(schedule_id, schedule).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             )
             .delete(
@@ -181,7 +188,8 @@ impl AppProps {
                         return Err((StatusCode::BAD_REQUEST, "Schedule id not valid"));
                     }
 
-                    shared_panel.lock().await.delete_schedule(schedule_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
+                    let mut panel = shared_panel.lock().await;
+                    panel.delete_schedule(schedule_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))
                 },
             ),
         )
@@ -200,6 +208,7 @@ impl AppWithStateBuilder for AppProps {
         picoserve::Router::new()
             .nest("/", Self::static_router())
             .nest("/page", Self::page_router())
+            .nest("/pages", Self::pages_router())
             .nest("/schedule", Self::schedule_router())
             .nest("/clock", Self::clock_router())
     }

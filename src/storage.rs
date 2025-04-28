@@ -10,7 +10,6 @@ use sequential_storage::{
 };
 
 const LOGGER_NAME: &str = "NvsStorage";
-const MAX_PAGES: usize = 24;
 
 pub const PAGE_STORAGE_BEGIN: u32 = 0x9000;
 pub const PAGE_STORAGE_SIZE: u32 = 0x3000;
@@ -109,7 +108,7 @@ impl<T: for<'a> Value<'a> + Debug> NvsStorageSection<T> {
         Ok(page)
     }
 
-    pub async fn read_all(&mut self) -> Result<Vec<T, MAX_PAGES>> {
+    pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>> {
         log::info!("{LOGGER_NAME}: Reading all pages");
 
         let mut cache = NoCache::new();
@@ -123,7 +122,7 @@ impl<T: for<'a> Value<'a> + Debug> NvsStorageSection<T> {
         .await
         .map_err(|_| anyhow!("Failed to read page from storage"))?;
 
-        let mut pages = Vec::<T, MAX_PAGES>::new();
+        let mut pages = Vec::<T, N>::new();
 
         while let Some((_, page)) = pages_iterator
             .next::<u8, T>(&mut self.data_buffer)

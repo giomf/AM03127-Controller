@@ -17,10 +17,11 @@ use crate::{
 };
 use anyhow::Result;
 use core::fmt::Write;
-use heapless::String;
+use heapless::{String, Vec};
 
-pub const DEFAULT_PANEL_ID: u8 = 1;
 const LOGGER_NAME: &str = "Panel";
+pub const DEFAULT_PANEL_ID: u8 = 1;
+const MAX_PAGES: usize = 24;
 
 pub struct Panel<'a> {
     uart: Uart<'a>,
@@ -86,6 +87,11 @@ impl<'a> Panel<'a> {
     pub async fn get_page(&mut self, page_id: char) -> Result<Option<Page>> {
         log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
         self.page_storage.read(page_id).await
+    }
+
+    pub async fn get_pages(&mut self) -> Result<Vec<Page, MAX_PAGES>> {
+        log::info!("{LOGGER_NAME}: Getting pages");
+        self.page_storage.read_all().await
     }
 
     pub async fn delete_page(&mut self, page_id: char) -> Result<()> {
