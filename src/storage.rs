@@ -63,7 +63,7 @@ impl<'a> Value<'a> for Schedule {
 pub struct NvsStorageSection<T> {
     flash: BlockingAsync<FlashStorage>,
     flash_range: Range<u32>,
-    data_buffer: Vec<u8, 0>,
+    data_buffer: Vec<u8, 24>,
     _type: PhantomData<T>,
 }
 
@@ -77,11 +77,11 @@ impl<T: for<'a> Value<'a> + Debug> NvsStorageSection<T> {
         let value_size = core::mem::size_of::<T>();
         let entry_size = key_size + value_size;
 
-        let mut data_buffer: Vec<u8, 0> = Vec::new();
-        data_buffer
-            .resize_default(entry_size)
-            .map_err(|_| anyhow!("Failed to create data buffer"))
-            .unwrap();
+        let mut data_buffer: Vec<u8, 24> = Vec::new();
+        // data_buffer
+        //     .resize_default(entry_size)
+        //     .map_err(|_| anyhow!("Failed to create data buffer"))
+        //     .unwrap();
 
         NvsStorageSection {
             flash,

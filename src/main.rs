@@ -9,14 +9,17 @@ mod storage;
 mod uart;
 
 use embassy_executor::Spawner;
-use embassy_net::{Runner, StackResources};
+use embassy_net::{Runner, Stack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::timer::systimer::SystemTimer;
+use esp_hal::peripheral::Peripheral;
+use esp_hal::peripherals::{RADIO_CLK, WIFI};
+use esp_hal::timer::{systimer::SystemTimer, timg::TimerGroupInstance};
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println::println;
+use esp_wifi::EspWifiRngSource;
 use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
@@ -41,34 +44,20 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(size: 72 * 1024);
 
-    let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let mut rng = Rng::new(peripherals.RNG);
-
-    let esp_wifi_ctrl = &*make_static!(
-        EspWifiController<'static>,
-        init(timg0.timer0, rng.clone(), peripherals.RADIO_CLK).unwrap()
+    let rng = Rng::new(peripherals.RNG);
+    let (wifi_controller, wifi_interface) = init_wifi(
+        peripherals.TIMG0,
+        peripherals.RADIO_CLK,
+        peripherals.WIFI,
+        rng.clone(),
     );
-
-    let (wifi_controller, interfaces) =
-        esp_wifi::wifi::new(&esp_wifi_ctrl, peripherals.WIFI).unwrap();
-    let wifi_interface = interfaces.sta;
-
     let systimer = SystemTimer::new(peripherals.SYSTIMER);
     esp_hal_embassy::init(systimer.alarm0);
 
-    let config = embassy_net::Config::dhcpv4(Default::default());
-    let seed = (rng.random() as u64) << 32 | rng.random() as u64;
+    let (network_stack, network_runner) = init_network(rng, wifi_interface);
 
-    // Init network stack
-    let (network_stack, network_runner) = embassy_net::new(
-        wifi_interface,
-        config,
-        make_static!(StackResources<STACK_RESSOURCE_SIZE>, StackResources::new()),
-        seed,
-    );
-
-    spawner.spawn(net_task(network_runner)).ok();
-    spawner.spawn(wifi_connection(wifi_controller)).ok();
+    spawner.spawn(network_task(network_runner)).ok();
+    spawner.spawn(wifi_task(wifi_controller)).ok();
 
     network_stack.wait_link_up().await;
     network_stack.wait_config_up().await;
@@ -92,13 +81,8 @@ async fn main(spawner: Spawner) {
     let shared_panel = SharedPanel(make_static!(
         Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
     ));
-    shared_panel
-        .0
-        .lock()
-        .await
-        .init()
-        .await
-        .expect("Failed to initialze panel");
+    let mut panel = shared_panel.0.lock().await;
+    panel.init().await.expect("Failed to initialze panel");
 
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
@@ -111,8 +95,42 @@ async fn main(spawner: Spawner) {
     }
 }
 
+fn init_wifi(
+    timer_group: impl TimerGroupInstance,
+    radio_clk: impl Peripheral<P = RADIO_CLK> + 'static,
+    wifi: impl Peripheral<P = WIFI> + 'static,
+    rng: impl Peripheral<P = impl EspWifiRngSource> + 'static,
+) -> (WifiController<'static>, WifiDevice<'static>) {
+    let timg0 = TimerGroup::new(timer_group);
+    let esp_wifi_ctrl = &*make_static!(
+        EspWifiController<'static>,
+        init(timg0.timer0, rng, radio_clk).unwrap()
+    );
+
+    let (wifi_controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, wifi).unwrap();
+    let wifi_interface = interfaces.sta;
+
+    return (wifi_controller, wifi_interface);
+}
+
+fn init_network(
+    mut rng: Rng,
+    wifi_interface: WifiDevice<'static>,
+) -> (Stack<'static>, Runner<'static, WifiDevice<'static>>) {
+    let config = embassy_net::Config::dhcpv4(Default::default());
+    let seed = (rng.random() as u64) << 32 | rng.random() as u64;
+
+    // Init network stack
+    embassy_net::new(
+        wifi_interface,
+        config,
+        make_static!(StackResources<STACK_RESSOURCE_SIZE>, StackResources::new()),
+        seed,
+    )
+}
+
 #[embassy_executor::task]
-async fn wifi_connection(mut wifi_controller: WifiController<'static>) {
+async fn wifi_task(mut wifi_controller: WifiController<'static>) {
     println!("Start wifi connection task");
     loop {
         match esp_wifi::wifi::wifi_state() {
@@ -149,6 +167,6 @@ async fn wifi_connection(mut wifi_controller: WifiController<'static>) {
 }
 
 #[embassy_executor::task]
-async fn net_task(mut runner: Runner<'static, WifiDevice<'static>>) {
+async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) {
     runner.run().await
 }
