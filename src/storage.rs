@@ -60,28 +60,20 @@ impl<'a> Value<'a> for Schedule {
     }
 }
 
-pub struct NvsStorageSection<T> {
+pub struct NvsStorageSection<T, const S: usize> {
     flash: BlockingAsync<FlashStorage>,
     flash_range: Range<u32>,
-    data_buffer: Vec<u8, 24>,
+    data_buffer: Vec<u8, S>,
     _type: PhantomData<T>,
 }
 
-impl<T: for<'a> Value<'a> + Debug> NvsStorageSection<T> {
+impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     pub fn new(flash_begin: u32, flash_size: u32) -> Self {
         let flash = BlockingAsync::new(FlashStorage::new());
         let flash_end = flash_begin + flash_size;
         let flash_range = flash_begin..flash_end;
 
-        let key_size = core::mem::size_of::<u8>();
-        let value_size = core::mem::size_of::<T>();
-        let entry_size = key_size + value_size;
-
-        let mut data_buffer: Vec<u8, 24> = Vec::new();
-        // data_buffer
-        //     .resize_default(entry_size)
-        //     .map_err(|_| anyhow!("Failed to create data buffer"))
-        //     .unwrap();
+        let data_buffer: Vec<u8, S> = Vec::new();
 
         NvsStorageSection {
             flash,

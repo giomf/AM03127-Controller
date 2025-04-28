@@ -23,11 +23,14 @@ const LOGGER_NAME: &str = "Panel";
 const DEFAULT_PANEL_ID: u8 = 1;
 const MAX_PAGES: usize = 24; // A - Z
 const MAX_SCHEDULES: usize = 5; // A - E
+const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
+const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Page>();
+const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Schedule>();
 
 pub struct Panel<'a> {
     uart: Uart<'a>,
-    page_storage: NvsStorageSection<Page>,
-    schedule_storage: NvsStorageSection<Schedule>,
+    page_storage: NvsStorageSection<Page, { KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE }>,
+    schedule_storage: NvsStorageSection<Schedule, { KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE }>,
 }
 
 impl<'a> Panel<'a> {
