@@ -193,5 +193,5 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
     )
 }
 fn is_id_valid(id: char) -> bool {
-    id > 'A' && id < 'Z'
+    id >= 'A' && id <= 'Z'
 }
