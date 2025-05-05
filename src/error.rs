@@ -2,14 +2,23 @@ use core::fmt::{Display, Write};
 use esp_storage::FlashStorageError;
 use heapless::String as HString;
 
+/// Type alias for a fixed-size string used in error messages
 type String = HString<64>;
 
+/// Error types for the application
+///
+/// This enum represents all possible errors that can occur in the application.
 #[derive(Debug)]
 pub enum Error {
+    /// Storage-related errors
     Storage(String),
+    /// UART communication errors
     Uart(String),
+    /// Internal application errors
     Internal(String),
+    /// Resource not found errors
     NotFound(String),
+    /// Bad request errors (invalid input)
     BadRequest(String),
 }
 

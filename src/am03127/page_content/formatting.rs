@@ -2,7 +2,10 @@
 
 use core::fmt::{self, Display};
 
-/// Font size
+/// Font sizes available for text on the LED panel
+///
+/// Different font sizes can be used to display text with different
+/// appearances on the LED panel.
 pub enum Font {
     /// Normal size (5x7)
     Normal,
@@ -30,6 +33,9 @@ impl Display for Font {
     }
 }
 
+/// Specifies the starting column for text on the LED panel
+///
+/// This allows positioning text at a specific horizontal position.
 pub struct ColumnStart(pub u8);
 
 impl Display for ColumnStart {
@@ -38,6 +44,9 @@ impl Display for ColumnStart {
     }
 }
 
+/// Clock display formats for the LED panel
+///
+/// These formats allow displaying the current time or date on the panel.
 pub enum Clock {
     /// Date in format [DD/MM/YY]
     Date,

@@ -8,15 +8,32 @@ use esp_hal::{
     uart::{Config, DataBits, Parity, Uart as UartDriver},
 };
 
+/// Baud rate for UART communication with the LED panel
 const BAUD_RATE: u32 = 9600;
+/// Size of the buffer for reading responses from the LED panel
 const READ_BUFFER_SIZE: usize = 32;
+/// Logger name for UART-related log messages
 const LOGGER_NAME: &str = "UART";
 
+/// UART communication interface for the LED panel
+///
+/// This struct handles the low-level communication with the AM03127 LED panel
+/// over a UART interface.
 pub struct Uart<'a> {
+    /// The underlying UART driver
     uart: UartDriver<'a, Async>,
 }
 
 impl<'a> Uart<'a> {
+    /// Creates a new UART interface for communicating with the LED panel
+    ///
+    /// # Arguments
+    /// * `uart` - The UART1 peripheral
+    /// * `tx` - The TX pin peripheral
+    /// * `rx` - The RX pin peripheral
+    ///
+    /// # Returns
+    /// * A new Uart instance configured for communication with the LED panel
     pub fn new(
         uart: UART1,
         tx: impl Peripheral<P = impl PeripheralOutput> + 'a,
@@ -37,6 +54,14 @@ impl<'a> Uart<'a> {
         Self { uart }
     }
 
+    /// Initializes the LED panel with a specific ID
+    ///
+    /// # Arguments
+    /// * `id` - The ID to assign to the LED panel
+    ///
+    /// # Returns
+    /// * `Ok(())` if initialization was successful
+    /// * `Err(Error)` if initialization failed
     pub async fn init(&mut self, id: u8) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Initialize panel with ID: {id}");
         let command = am03127::set_id(id);
@@ -45,6 +70,14 @@ impl<'a> Uart<'a> {
         Ok(())
     }
 
+    /// Writes data to the LED panel and processes the response
+    ///
+    /// # Arguments
+    /// * `data` - The data to write to the LED panel
+    ///
+    /// # Returns
+    /// * `Ok(())` if the write was successful and the panel acknowledged it
+    /// * `Err(Error)` if the write failed or the panel rejected the command
     pub async fn write(&mut self, data: &[u8]) -> Result<(), Error> {
         self.uart.write_all(data).await?;
         let mut buffer = [0u8; READ_BUFFER_SIZE];

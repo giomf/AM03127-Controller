@@ -19,26 +19,51 @@ use crate::{
 use core::fmt::Write;
 use heapless::{String, Vec};
 
+/// Logger name for panel-related log messages
 const LOGGER_NAME: &str = "Panel";
+/// Default ID for the LED panel
 const DEFAULT_PANEL_ID: u8 = 1;
-const MAX_PAGES: usize = 24; // A - Z
-const MAX_SCHEDULES: usize = 5; // A - E
+/// Maximum number of pages that can be stored (A-Z)
+const MAX_PAGES: usize = 24;
+/// Maximum number of schedules that can be stored (A-E)
+const MAX_SCHEDULES: usize = 5;
+/// Size of a key in memory
 const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
+/// Size of a Page struct in memory
 const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Page>();
+/// Size of a Schedule struct in memory
 const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Schedule>();
+/// Total size needed for a page entry (key + data)
 const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE;
+/// Total size needed for a schedule entry (key + data)
 const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE;
 
+/// Type alias for a collection of pages
 pub type Pages = Vec<Page, MAX_PAGES>;
+/// Type alias for a collection of schedules
 pub type Schedules = Vec<Schedule, MAX_SCHEDULES>;
 
+/// Main controller for the LED panel
+///
+/// This struct provides high-level methods to interact with the LED panel,
+/// including displaying content, managing pages and schedules, and setting the clock.
 pub struct Panel<'a> {
+    /// UART interface for communicating with the panel
     uart: Uart<'a>,
+    /// Storage for pages
     page_storage: NvsStorageSection<Page, { PAGE_ENTRY_SIZE }>,
+    /// Storage for schedules
     schedule_storage: NvsStorageSection<Schedule, { SCHEDULE_ENTRY_SIZE }>,
 }
 
 impl<'a> Panel<'a> {
+    /// Creates a new Panel instance
+    ///
+    /// # Arguments
+    /// * `uart` - UART interface for communicating with the LED panel
+    ///
+    /// # Returns
+    /// * A new Panel instance with initialized storage
     pub fn new(uart: Uart<'a>) -> Self {
         log::info!(
             "{LOGGER_NAME}: Creating page storage beginning at {PAGE_STORAGE_BEGIN} size of {PAGE_STORAGE_SIZE} and data buffer size of {PAGE_ENTRY_SIZE}"
@@ -56,12 +81,27 @@ impl<'a> Panel<'a> {
         }
     }
 
+    /// Initializes the LED panel
+    ///
+    /// # Returns
+    /// * `Ok(())` if initialization was successful
+    /// * `Err(Error)` if initialization failed
     pub async fn init(&mut self) -> Result<(), Error> {
         self.uart.init(DEFAULT_PANEL_ID).await?;
 
         Ok(())
     }
 
+    /// Displays a clock on the specified page
+    ///
+    /// Creates a page showing the current time and date.
+    ///
+    /// # Arguments
+    /// * `page_id` - The ID of the page to display the clock on
+    ///
+    /// # Returns
+    /// * `Ok(())` if the clock was displayed successfully
+    /// * `Err(Error)` if displaying the clock failed
     pub async fn display_clock(&mut self, page_id: char) -> Result<(), Error> {
         let mut message = String::<32>::new();
         write!(
@@ -80,6 +120,14 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
+    /// Sets the panel's internal clock
+    ///
+    /// # Arguments
+    /// * `date_time` - The date and time to set
+    ///
+    /// # Returns
+    /// * `Ok(())` if the clock was set successfully
+    /// * `Err(Error)` if setting the clock failed
     pub async fn set_clock(&mut self, date_time: DateTime) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Setting clock");
         let command = date_time.command(DEFAULT_PANEL_ID);
@@ -88,6 +136,15 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
+    /// Sets a page on the panel
+    ///
+    /// # Arguments
+    /// * `page_id` - The ID of the page to set
+    /// * `page` - The page content
+    ///
+    /// # Returns
+    /// * `Ok(())` if the page was set successfully
+    /// * `Err(Error)` if setting the page failed
     pub async fn set_page(&mut self, page_id: char, page: Page) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
         log::debug!("{LOGGER_NAME}: {:?}", page);
@@ -100,16 +157,38 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
+    /// Retrieves a page from storage
+    ///
+    /// # Arguments
+    /// * `page_id` - The ID of the page to retrieve
+    ///
+    /// # Returns
+    /// * `Ok(Some(Page))` if the page was found
+    /// * `Ok(None)` if the page doesn't exist
+    /// * `Err(Error)` if retrieving the page failed
     pub async fn get_page(&mut self, page_id: char) -> Result<Option<Page>, Error> {
         log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
         self.page_storage.read(page_id).await
     }
 
+    /// Retrieves all pages from storage
+    ///
+    /// # Returns
+    /// * `Ok(Pages)` - A vector of all pages
+    /// * `Err(Error)` if retrieving the pages failed
     pub async fn get_pages(&mut self) -> Result<Pages, Error> {
         log::info!("{LOGGER_NAME}: Getting pages");
         self.page_storage.read_all().await
     }
 
+    /// Deletes a page from the panel and storage
+    ///
+    /// # Arguments
+    /// * `page_id` - The ID of the page to delete
+    ///
+    /// # Returns
+    /// * `Ok(())` if the page was deleted successfully
+    /// * `Err(Error)` if deleting the page failed
     pub async fn delete_page(&mut self, page_id: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{page_id}\"");
 
@@ -123,6 +202,15 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
+    /// Sets a schedule on the panel
+    ///
+    /// # Arguments
+    /// * `schedule_id` - The ID of the schedule to set
+    /// * `schedule` - The schedule content
+    ///
+    /// # Returns
+    /// * `Ok(())` if the schedule was set successfully
+    /// * `Err(Error)` if setting the schedule failed
     pub async fn set_schedule(
         &mut self,
         schedule_id: char,
@@ -138,16 +226,38 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
+    /// Retrieves a schedule from storage
+    ///
+    /// # Arguments
+    /// * `schedule_id` - The ID of the schedule to retrieve
+    ///
+    /// # Returns
+    /// * `Ok(Some(Schedule))` if the schedule was found
+    /// * `Ok(None)` if the schedule doesn't exist
+    /// * `Err(Error)` if retrieving the schedule failed
     pub async fn get_schedule(&mut self, schedule_id: char) -> Result<Option<Schedule>, Error> {
         log::info!("{LOGGER_NAME}: Getting schedule \"{schedule_id}\"");
         self.schedule_storage.read(schedule_id).await
     }
 
+    /// Retrieves all schedules from storage
+    ///
+    /// # Returns
+    /// * `Ok(Schedules)` - A vector of all schedules
+    /// * `Err(Error)` if retrieving the schedules failed
     pub async fn get_schedules(&mut self) -> Result<Schedules, Error> {
         log::info!("{LOGGER_NAME}: Getting schedules");
         self.schedule_storage.read_all().await
     }
 
+    /// Deletes a schedule from the panel and storage
+    ///
+    /// # Arguments
+    /// * `schedule_id` - The ID of the schedule to delete
+    ///
+    /// # Returns
+    /// * `Ok(())` if the schedule was deleted successfully
+    /// * `Err(Error)` if deleting the schedule failed
     pub async fn delete_schedule(&mut self, schedule_id: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{schedule_id}\"");
 

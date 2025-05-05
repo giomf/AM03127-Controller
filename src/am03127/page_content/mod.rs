@@ -10,6 +10,9 @@ use crate::server::dto::PageDto;
 
 use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, MESSAGE_STRING_SIZE};
 
+/// Leading effects for displaying content on the LED panel
+///
+/// These effects control how content appears on the panel when it is first displayed.
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Leading {
@@ -78,6 +81,9 @@ impl Display for Leading {
         write!(f, "{character}")
     }
 }
+/// Lagging effects for content on the LED panel
+///
+/// These effects control how content disappears from the panel when it is removed.
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Lagging {
@@ -126,53 +132,56 @@ impl Display for Lagging {
     }
 }
 
-/// Enum representing different speed levels and actions.
+/// Waiting modes and speeds for content on the LED panel
+///
+/// These settings control how content behaves while it is being displayed,
+/// including speed of transitions and special effects like blinking or playing sounds.
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WaitingModeAndSpeed {
-    /// Display Blinking while waiting
+    /// Display Blinking while waiting (fastest speed)
     FastestBlinking,
-    /// Display stay steady while waiting
+    /// Display stay steady while waiting (fastest speed)
     #[default]
     FastestNormal,
-    /// Play pre-defined song 1
+    /// Play pre-defined song 1 (fastest speed)
     FastestSong1,
-    /// Play pre-defined song 2
+    /// Play pre-defined song 2 (fastest speed)
     FastestSong2,
-    /// Play pre-defined song 3
+    /// Play pre-defined song 3 (fastest speed)
     FastestSong3,
 
-    /// Display Blinking while waiting
+    /// Display Blinking while waiting (middle-fast speed)
     MiddleFastBlinking,
-    /// Display stay steady while waiting
+    /// Display stay steady while waiting (middle-fast speed)
     MiddleFastNormal,
-    /// Play pre-defined song 1
+    /// Play pre-defined song 1 (middle-fast speed)
     MiddleFastSong1,
-    /// Play pre-defined song 2
+    /// Play pre-defined song 2 (middle-fast speed)
     MiddleFastSong2,
-    /// Play pre-defined song 3
+    /// Play pre-defined song 3 (middle-fast speed)
     MiddleFastSong3,
 
-    /// Display Blinking while waiting
+    /// Display Blinking while waiting (middle-slow speed)
     MiddleSlowBlinking,
-    /// Display stay steady while waiting
+    /// Display stay steady while waiting (middle-slow speed)
     MiddleSlowNormal,
-    /// Play pre-defined song 1
+    /// Play pre-defined song 1 (middle-slow speed)
     MiddleSlowSong1,
-    /// Play pre-defined song 2
+    /// Play pre-defined song 2 (middle-slow speed)
     MiddleSlowSong2,
-    /// Play pre-defined song 3
+    /// Play pre-defined song 3 (middle-slow speed)
     MiddleSlowSong3,
 
-    /// Display Blinking while waiting
+    /// Display Blinking while waiting (slowest speed)
     SlowestBlinking,
-    /// Display stay steady while waiting
+    /// Display stay steady while waiting (slowest speed)
     SlowestNormal,
-    /// Play pre-defined song 1
+    /// Play pre-defined song 1 (slowest speed)
     SlowestSong1,
-    /// Play pre-defined song 2
+    /// Play pre-defined song 2 (slowest speed)
     SlowestSong2,
-    /// Play pre-defined song 3
+    /// Play pre-defined song 3 (slowest speed)
     SlowestSong3,
 }
 
@@ -208,45 +217,110 @@ impl Display for WaitingModeAndSpeed {
     }
 }
 
+/// Represents a page of content for the LED panel
+///
+/// A page contains text content and display settings that control
+/// how the content appears, behaves, and disappears on the panel.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Page {
+    /// Line number (usually 1)
     line: u8,
+    /// Page ID (A-Z)
     page: char,
+    /// Effect for how the page appears
     pub leading: Leading,
+    /// Effect for how the page disappears
     pub lagging: Lagging,
+    /// Speed and behavior while the page is displayed
     pub waiting_mode_and_speed: WaitingModeAndSpeed,
+    /// Text content of the page
     pub message: String<MESSAGE_STRING_SIZE>,
 }
 
 impl CommandAble for Page {}
 
 impl Page {
+    /// Sets the line number for the page
+    ///
+    /// # Arguments
+    /// * `line` - The line number
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn line(mut self, line: u8) -> Self {
         self.line = line;
         self
     }
+    
+    /// Sets the page ID
+    ///
+    /// # Arguments
+    /// * `page` - The page ID (A-Z)
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn page(mut self, page: char) -> Self {
         self.page = page;
         self
     }
+    
+    /// Sets the leading effect for the page
+    ///
+    /// # Arguments
+    /// * `leading` - The leading effect
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn leading(mut self, leading: Leading) -> Self {
         self.leading = leading;
         self
     }
+    
+    /// Sets the lagging effect for the page
+    ///
+    /// # Arguments
+    /// * `lagging` - The lagging effect
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn lagging(mut self, lagging: Lagging) -> Self {
         self.lagging = lagging;
         self
     }
+    
+    /// Sets the waiting mode and speed for the page
+    ///
+    /// # Arguments
+    /// * `waiting_mode_and_speed` - The waiting mode and speed
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn waiting_mode_and_speed(mut self, waiting_mode_and_speed: WaitingModeAndSpeed) -> Self {
         self.waiting_mode_and_speed = waiting_mode_and_speed;
         self
     }
+    
+    /// Sets the message content for the page
+    ///
+    /// # Arguments
+    /// * `message` - The message text
+    ///
+    /// # Returns
+    /// * `Self` - Returns self for method chaining
     pub fn message(mut self, message: &str) -> Self {
         self.message.clear();
         let _ = self.message.push_str(message);
         self
     }
 
+    /// Creates a Page from a DTO with a specific ID
+    ///
+    /// # Arguments
+    /// * `page` - The page ID
+    /// * `dto` - The PageDto containing page data
+    ///
+    /// # Returns
+    /// * A new Page instance
     pub fn from_dto_with_id(page: char, dto: PageDto) -> Self {
         Self::default()
             .page(page)
@@ -256,6 +330,13 @@ impl Page {
             .message(&dto.text)
     }
 
+    /// Replaces European characters with their panel-specific codes
+    ///
+    /// # Arguments
+    /// * `message` - The message text with possible European characters
+    ///
+    /// # Returns
+    /// * A new string with European characters replaced by panel codes
     fn replace_european_character(message: &str) -> String<MESSAGE_STRING_SIZE> {
         let mut result = String::<MESSAGE_STRING_SIZE>::new();
         for c in message.chars() {

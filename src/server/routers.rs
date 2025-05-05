@@ -12,9 +12,15 @@ use picoserve::{
     routing::{PathRouter, get},
 };
 
+/// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
+/// Buffer size for JSON deserialization
 const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 
+/// Creates a router for static content
+///
+/// # Returns
+/// * A router that serves static content
 pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
@@ -22,6 +28,10 @@ pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState>
     )
 }
 
+/// Creates a router for clock-related endpoints
+///
+/// # Returns
+/// * A router that handles clock-related requests
 pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
@@ -58,6 +68,10 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
     )
 }
 
+/// Creates a router for page-related endpoints
+///
+/// # Returns
+/// * A router that handles requests for individual pages
 pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         ("", parse_path_segment::<char>()),
@@ -120,6 +134,10 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     )
 }
 
+/// Creates a router for the pages collection endpoint
+///
+/// # Returns
+/// * A router that handles requests for all pages
 pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
@@ -138,6 +156,10 @@ pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
     )
 }
 
+/// Creates a router for schedule-related endpoints
+///
+/// # Returns
+/// * A router that handles requests for individual schedules
 pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         ("", parse_path_segment::<char>()),
@@ -199,6 +221,10 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
     )
 }
 
+/// Creates a router for the schedules collection endpoint
+///
+/// # Returns
+/// * A router that handles requests for all schedules
 pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
@@ -216,6 +242,15 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
         ),
     )
 }
+
+/// Checks if an ID is valid (A-Z)
+///
+/// # Arguments
+/// * `id` - The ID to check
+///
+/// # Returns
+/// * `true` if the ID is valid (A-Z)
+/// * `false` otherwise
 fn is_id_valid(id: char) -> bool {
     id >= 'A' && id <= 'Z'
 }

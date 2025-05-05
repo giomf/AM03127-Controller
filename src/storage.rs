@@ -11,14 +11,28 @@ use sequential_storage::{
     map::{self, SerializationError, Value},
 };
 
+/// Logger name for storage-related log messages
 const LOGGER_NAME: &str = "NvsStorage";
 
+/// Starting address for page storage in flash memory
 pub const PAGE_STORAGE_BEGIN: u32 = 0x9000;
+/// Size of the page storage area in flash memory
 pub const PAGE_STORAGE_SIZE: u32 = 0x3000;
+/// Starting address for schedule storage in flash memory
 pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
+/// Size of the schedule storage area in flash memory
 pub const SCHEDULE_STORAGE_SIZE: u32 = 0x1000;
 
+/// Implementation of Value trait for Page to enable serialization/deserialization
 impl<'a> Value<'a> for Page {
+    /// Serializes a Page into a byte buffer
+    ///
+    /// # Arguments
+    /// * `buffer` - The buffer to serialize into
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - The number of bytes written
+    /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
         if buffer.len() < core::mem::size_of::<Self>() {
             return Err(SerializationError::BufferTooSmall);
@@ -29,6 +43,14 @@ impl<'a> Value<'a> for Page {
         }
     }
 
+    /// Deserializes a Page from a byte buffer
+    ///
+    /// # Arguments
+    /// * `buffer` - The buffer containing serialized data
+    ///
+    /// # Returns
+    /// * `Ok(Self)` - The deserialized Page
+    /// * `Err(SerializationError)` - If deserialization failed
     fn deserialize_from(buffer: &'a [u8]) -> Result<Self, map::SerializationError>
     where
         Self: Sized,
@@ -40,7 +62,16 @@ impl<'a> Value<'a> for Page {
     }
 }
 
+/// Implementation of Value trait for Schedule to enable serialization/deserialization
 impl<'a> Value<'a> for Schedule {
+    /// Serializes a Schedule into a byte buffer
+    ///
+    /// # Arguments
+    /// * `buffer` - The buffer to serialize into
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - The number of bytes written
+    /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
         if buffer.len() < core::mem::size_of::<Self>() {
             return Err(SerializationError::BufferTooSmall);
@@ -51,6 +82,14 @@ impl<'a> Value<'a> for Schedule {
         }
     }
 
+    /// Deserializes a Schedule from a byte buffer
+    ///
+    /// # Arguments
+    /// * `buffer` - The buffer containing serialized data
+    ///
+    /// # Returns
+    /// * `Ok(Self)` - The deserialized Schedule
+    /// * `Err(SerializationError)` - If deserialization failed
     fn deserialize_from(buffer: &'a [u8]) -> Result<Self, map::SerializationError>
     where
         Self: Sized,
@@ -62,13 +101,28 @@ impl<'a> Value<'a> for Schedule {
     }
 }
 
+/// Storage section for persistent data in flash memory
+///
+/// This generic struct provides methods to read, write, and delete items
+/// from a specific section of flash memory.
 pub struct NvsStorageSection<T, const S: usize> {
+    /// Flash storage driver
     flash: BlockingAsync<FlashStorage>,
+    /// Range of flash memory addresses for this section
     flash_range: Range<u32>,
+    /// Phantom data to track the type stored in this section
     _type: PhantomData<T>,
 }
 
 impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
+    /// Creates a new storage section in flash memory
+    ///
+    /// # Arguments
+    /// * `flash_begin` - Starting address of the flash section
+    /// * `flash_size` - Size of the flash section in bytes
+    ///
+    /// # Returns
+    /// * A new NvsStorageSection instance
     pub fn new(flash_begin: u32, flash_size: u32) -> Self {
         let flash = BlockingAsync::new(FlashStorage::new());
         let flash_end = flash_begin + flash_size;
@@ -81,6 +135,15 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         }
     }
 
+    /// Reads an item from storage by its key
+    ///
+    /// # Arguments
+    /// * `key` - Character key to identify the item
+    ///
+    /// # Returns
+    /// * `Ok(Some(T))` - The item if found
+    /// * `Ok(None)` - If the item doesn't exist
+    /// * `Err(Error)` - If reading failed
     pub async fn read(&mut self, key: char) -> Result<Option<T>, Error> {
         log::info!("{LOGGER_NAME}: Reading page \"{key}\"");
 
@@ -99,6 +162,14 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         Ok(page)
     }
 
+    /// Reads all items from storage
+    ///
+    /// # Type Parameters
+    /// * `N` - Maximum number of items to read
+    ///
+    /// # Returns
+    /// * `Ok(Vec<T, N>)` - Vector of all items
+    /// * `Err(Error)` - If reading failed
     pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>, Error> {
         log::info!("{LOGGER_NAME}: Reading all pages");
 
@@ -121,6 +192,15 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         Ok(pages)
     }
 
+    /// Writes an item to storage
+    ///
+    /// # Arguments
+    /// * `key` - Character key to identify the item
+    /// * `value` - The item to write
+    ///
+    /// # Returns
+    /// * `Ok(())` - If writing was successful
+    /// * `Err(Error)` - If writing failed
     pub async fn write(&mut self, key: char, value: T) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Writing page \"{key}\"");
 
@@ -138,6 +218,14 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         Ok(())
     }
 
+    /// Deletes an item from storage
+    ///
+    /// # Arguments
+    /// * `key` - Character key identifying the item to delete
+    ///
+    /// # Returns
+    /// * `Ok(())` - If deletion was successful
+    /// * `Err(Error)` - If deletion failed
     pub async fn delete(&mut self, key: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{key}\"");
 
