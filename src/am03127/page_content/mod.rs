@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::server::dto::PageDto;
 
-use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, STRING_SIZE};
+use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, MESSAGE_STRING_SIZE};
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -215,7 +215,7 @@ pub struct Page {
     pub leading: Leading,
     pub lagging: Lagging,
     pub waiting_mode_and_speed: WaitingModeAndSpeed,
-    pub message: String<STRING_SIZE>,
+    pub message: String<MESSAGE_STRING_SIZE>,
 }
 
 impl CommandAble for Page {}
@@ -256,8 +256,8 @@ impl Page {
             .message(&dto.text)
     }
 
-    fn replace_european_character(message: &str) -> String<STRING_SIZE> {
-        let mut result = String::<STRING_SIZE>::new();
+    fn replace_european_character(message: &str) -> String<MESSAGE_STRING_SIZE> {
+        let mut result = String::<MESSAGE_STRING_SIZE>::new();
         for c in message.chars() {
             match c {
                 'ü' => result.push_str("<U7C>").unwrap_or(()),

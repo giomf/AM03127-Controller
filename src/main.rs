@@ -25,7 +25,6 @@ use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
 };
-use heapless::String as HString;
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
@@ -37,8 +36,6 @@ const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
-
-type String = HString<64>;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -172,5 +169,7 @@ async fn wifi_task(mut wifi_controller: WifiController<'static>) {
 
 #[embassy_executor::task]
 async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) {
+    const LOGGER_NAME: &str = "Network";
+    log::info!("{LOGGER_NAME}: Start network task");
     runner.run().await
 }

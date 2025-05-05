@@ -1,7 +1,8 @@
 use core::fmt::{Display, Write};
 use esp_storage::FlashStorageError;
+use heapless::String as HString;
 
-use crate::String;
+type String = HString<64>;
 
 #[derive(Debug)]
 pub enum Error {

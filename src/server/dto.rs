@@ -2,7 +2,7 @@ use heapless::String;
 use serde::{Deserialize, Serialize};
 
 use crate::am03127::{
-    STRING_SIZE,
+    MESSAGE_STRING_SIZE,
     page_content::{Lagging, Leading, Page, WaitingModeAndSpeed},
 };
 
@@ -20,7 +20,7 @@ pub struct DateTimeDto {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct PageDto {
-    pub text: String<STRING_SIZE>,
+    pub text: String<MESSAGE_STRING_SIZE>,
     #[serde(default)]
     pub leading: Leading,
     #[serde(default)]
