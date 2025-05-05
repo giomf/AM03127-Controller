@@ -19,7 +19,6 @@ use esp_hal::peripheral::Peripheral;
 use esp_hal::peripherals::{RADIO_CLK, WIFI};
 use esp_hal::timer::{systimer::SystemTimer, timg::TimerGroupInstance};
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_println::println;
 use esp_wifi::EspWifiRngSource;
 use esp_wifi::{
     EspWifiController, init,
@@ -63,8 +62,8 @@ async fn main(spawner: Spawner) {
     network_stack.wait_config_up().await;
 
     match network_stack.config_v4() {
-        Some(config) => println!("DHCP IP: {}", config.address),
-        None => println!("Failed to receive DHCP IP address"),
+        Some(config) => log::info!("Network: DHCP IP {}", config.address),
+        None => log::error!("Network: Failed to receive DHCP IP address"),
     }
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
     let config = make_static!(
@@ -131,7 +130,9 @@ fn init_network(
 
 #[embassy_executor::task]
 async fn wifi_task(mut wifi_controller: WifiController<'static>) {
-    println!("Start wifi connection task");
+    const LOGGER_NAME: &str = "WIFI";
+    log::info!("{LOGGER_NAME}: Start wifi connection task");
+
     loop {
         match esp_wifi::wifi::wifi_state() {
             WifiState::StaConnected => {
@@ -150,16 +151,16 @@ async fn wifi_task(mut wifi_controller: WifiController<'static>) {
                 ..Default::default()
             });
             wifi_controller.set_configuration(&client_config).unwrap();
-            println!("Starting wifi");
+            log::info!("{LOGGER_NAME}: Starting wifi");
             wifi_controller.start_async().await.unwrap();
-            println!("Wifi started!");
+            log::info!("{LOGGER_NAME}: Wifi started");
         }
-        println!("About to connect to wifi...");
+        log::info!("{LOGGER_NAME}: About to connect to wifi...");
 
         match wifi_controller.connect_async().await {
-            Ok(_) => println!("Wifi connected!"),
+            Ok(_) => log::info!("{LOGGER_NAME}: Wifi connected!"),
             Err(e) => {
-                println!("Failed to connect to wifi: {:?}", e);
+                log::info!("{LOGGER_NAME}: Failed to connect to wifi: {:?}", e);
                 Timer::after(Duration::from_millis(5000)).await
             }
         }
