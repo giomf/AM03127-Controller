@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: LED Panel Control API
+  description: API for controlling AM03127 LED panels
+  version: 1.0.0
+servers:
+  - url: http://localhost:80
+    description: Local development server
+paths:
+  /page/{pageId}:
+    parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Z]$'
+        description: Single uppercase letter (A-Z) identifying the page
+    get:
+      summary: Get a specific page
+      description: Retrieves the content and settings of a specific page by ID
+      responses:
+        '200':
+          description: Page found and returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '400':
+          description: Invalid page ID
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Page not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Create or update a page
+      description: Creates a new page or updates an existing page with the specified ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PageDto'
+      responses:
+        '200':
+          description: Page created or updated successfully
+        '400':
+          description: Invalid page ID or request body
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      summary: Delete a page
+      description: Deletes a page with the specified ID
+      responses:
+        '200':
+          description: Page deleted successfully
+        '400':
+          description: Invalid page ID
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /pages:
+    get:
+      summary: Get all pages
+      description: Retrieves all stored pages
+      responses:
+        '200':
+          description: List of pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Page'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /schedule/{scheduleId}:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Z]$'
+        description: Single uppercase letter (A-Z) identifying the schedule
+    get:
+      summary: Get a specific schedule
+      description: Retrieves a specific schedule by ID
+      responses:
+        '200':
+          description: Schedule found and returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+        '400':
+          description: Invalid schedule ID
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Schedule not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Create or update a schedule
+      description: Creates a new schedule or updates an existing schedule with the specified ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleDto'
+      responses:
+        '200':
+          description: Schedule created or updated successfully
+        '400':
+          description: Invalid schedule ID or request body
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      summary: Delete a schedule
+      description: Deletes a schedule with the specified ID
+      responses:
+        '200':
+          description: Schedule deleted successfully
+        '400':
+          description: Invalid schedule ID
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /schedules:
+    get:
+      summary: Get all schedules
+      description: Retrieves all stored schedules
+      responses:
+        '200':
+          description: List of schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Schedule'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /clock:
+    get:
+      summary: Display clock on panel
+      description: Displays the current time and date on the panel (page A)
+      responses:
+        '200':
+          description: Clock displayed successfully
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Set panel clock
+      description: Sets the internal clock of the LED panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DateTimeDto'
+      responses:
+        '200':
+          description: Clock set successfully
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    Leading:
+      type: string
+      enum:
+        - block_move
+        - curtain_down
+        - curtain_up
+        - hold
+        - immediate
+        - pen_amplus
+        - pen_hello_world
+        - pen_welcome
+        - random
+        - scroll_down
+        - scroll_left
+        - scroll_right
+        - scroll_up
+        - snow
+        - twinkle
+        - vclose
+        - vopen
+        - xopen
+      description: Animation effect for page entry
+    Lagging:
+      type: string
+      enum:
+        - curtain_down
+        - curtain_up
+        - hold
+        - immediate
+        - scroll_down
+        - scroll_left
+        - scroll_right
+        - scroll_up
+        - vclose
+        - vopen
+        - xopen
+      description: Animation effect for page exit
+    WaitingModeAndSpeed:
+      type: string
+      enum:
+        - fastest_blinking
+        - fastest_normal
+        - fastest_song1
+        - fastest_song2
+        - fastest_song3
+        - middle_fast_blinking
+        - middle_fast_normal
+        - middle_fast_song1
+        - middle_fast_song2
+        - middle_fast_song3
+        - middle_slow_blinking
+        - middle_slow_normal
+        - middle_slow_song1
+        - middle_slow_song2
+        - middle_slow_song3
+        - slowest_blinking
+        - slowest_normal
+        - slowest_song1
+        - slowest_song2
+        - slowest_song3
+      description: Display mode and speed while waiting
+    PageDto:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          maxLength: 16
+          description: Text content to display on the page
+        leading:
+          $ref: '#/components/schemas/Leading'
+          description: Entry animation effect
+        lagging:
+          $ref: '#/components/schemas/Lagging'
+          description: Exit animation effect
+        waiting_mode_and_speed:
+          $ref: '#/components/schemas/WaitingModeAndSpeed'
+          description: Display mode and speed while waiting
+    Page:
+      type: object
+      properties:
+        line:
+          type: integer
+          format: uint8
+          description: Line number
+        page:
+          type: string
+          pattern: '^[A-Z]$'
+          description: Page identifier (A-Z)
+        leading:
+          $ref: '#/components/schemas/Leading'
+        lagging:
+          $ref: '#/components/schemas/Lagging'
+        waiting_mode_and_speed:
+          $ref: '#/components/schemas/WaitingModeAndSpeed'
+        message:
+          type: string
+          maxLength: 16
+          description: Text content displayed on the page
+    DateTimeDto:
+      type: object
+      properties:
+        day:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 31
+          description: Day of month
+        hour:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 23
+          description: Hour (24-hour format)
+        minute:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 59
+          description: Minute
+        month:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 12
+          description: Month
+        second:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 59
+          description: Second
+        year:
+          type: integer
+          format: uint8
+          description: Year (last two digits)
+        week:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 53
+          description: Week of year
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Z]$'
+          description: Schedule identifier (A-Z)
+        from:
+          $ref: '#/components/schemas/DateTime'
+          description: Start date and time
+        to:
+          $ref: '#/components/schemas/DateTime'
+          description: End date and time
+        pages:
+          type: array
+          items:
+            type: string
+            pattern: '^[A-Z]$'
+          maxItems: 32
+          description: List of page IDs to display in sequence
+    DateTime:
+      type: object
+      properties:
+        year:
+          type: integer
+          format: uint8
+          description: Year (last two digits)
+        week:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 53
+          description: Week of year
+        month:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 12
+          description: Month
+        day:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 31
+          description: Day of month
+        hour:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 23
+          description: Hour (24-hour format)
+        minute:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 59
+          description: Minute
+        second:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 59
+          description: Second
+    ScheduleDto:
+      type: object
+      required:
+        - from
+        - to
+        - pages
+      properties:
+        from:
+          $ref: '#/components/schemas/DateTimeDto'
+          description: Start date and time
+        to:
+          $ref: '#/components/schemas/DateTimeDto'
+          description: End date and time
+        pages:
+          type: array
+          items:
+            type: string
+            pattern: '^[A-Z]$'
+          maxItems: 32
+          description: List of page IDs to display in sequence
