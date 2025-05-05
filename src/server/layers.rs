@@ -19,7 +19,9 @@ impl<W: ResponseWriter> ResponseWriter for LogResponseWriter<W> {
         response: picoserve::response::Response<H, B>,
     ) -> Result<picoserve::ResponseSent, Self::Error> {
         let status_code = response.status_code();
-        if status_code.is_client_error() {
+        if status_code.is_success() {
+            log::info!("{LOGGER_NAME}: Returning success {status_code}!");
+        } else if status_code.is_client_error() {
             log::warn!("{LOGGER_NAME}: Returning client error {status_code}!");
         } else if status_code.is_server_error() {
             log::error!("{LOGGER_NAME}: Returning server error {status_code}!");
