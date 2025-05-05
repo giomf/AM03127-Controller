@@ -32,7 +32,6 @@ use uart::Uart;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
-const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
@@ -72,8 +71,8 @@ async fn main(spawner: Spawner) {
         picoserve::Config<Duration>,
         picoserve::Config::new(picoserve::Timeouts {
             start_read_request: Some(Duration::from_secs(5)),
-            read_request: Some(Duration::from_secs(1)),
-            write: Some(Duration::from_secs(1)),
+            read_request: Some(Duration::from_secs(2)),
+            write: Some(Duration::from_secs(2)),
         })
         .keep_connection_alive()
     );

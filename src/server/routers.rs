@@ -1,5 +1,4 @@
 use super::{AppState, SharedPanel, dto};
-use crate::JSON_DESERIALIZE_BUFFER_SIZE;
 use crate::am03127::page_content::Page;
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
@@ -14,6 +13,7 @@ use picoserve::{
 };
 
 const LOGGER_NAME: &str = "Router";
+const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 
 pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
