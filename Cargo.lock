@@ -555,7 +555,6 @@ dependencies = [
 name = "esp-no-std"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "critical-section",
  "embassy-embedded-hal",
  "embassy-executor",

@@ -1,5 +1,7 @@
-use crate::am03127::{page_content::Page, schedule::Schedule};
-use anyhow::{Result, anyhow};
+use crate::{
+    am03127::{page_content::Page, schedule::Schedule},
+    error::Error,
+};
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 use embassy_embedded_hal::adapter::BlockingAsync;
 use esp_storage::FlashStorage;
@@ -83,7 +85,7 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         }
     }
 
-    pub async fn read(&mut self, key: char) -> Result<Option<T>> {
+    pub async fn read(&mut self, key: char) -> Result<Option<T>, Error> {
         log::info!("{LOGGER_NAME}: Reading page \"{key}\"");
 
         let page = map::fetch_item::<u8, T, _>(
@@ -93,14 +95,13 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
             &mut self.data_buffer,
             &(key as u8),
         )
-        .await
-        .map_err(|_| anyhow!("Failed to read page from storage"))?;
+        .await?;
 
         log::debug!("{LOGGER_NAME}: read {:?}", page);
         Ok(page)
     }
 
-    pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>> {
+    pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>, Error> {
         log::info!("{LOGGER_NAME}: Reading all pages");
 
         let mut cache = NoCache::new();
@@ -111,22 +112,17 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
             &mut cache,
             &mut self.data_buffer,
         )
-        .await
-        .map_err(|_| anyhow!("Failed to read page from storage"))?;
+        .await?;
 
         let mut pages = Vec::<T, N>::new();
 
-        while let Some((_, page)) = pages_iterator
-            .next::<u8, T>(&mut self.data_buffer)
-            .await
-            .map_err(|_| anyhow!("Failed to read page from storage"))?
-        {
+        while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut self.data_buffer).await? {
             pages.push(page).expect("Failed to fill pages");
         }
         Ok(pages)
     }
 
-    pub async fn write(&mut self, key: char, value: T) -> Result<()> {
+    pub async fn write(&mut self, key: char, value: T) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Writing page \"{key}\"");
 
         map::store_item(
@@ -137,13 +133,12 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
             &(key as u8),
             &value,
         )
-        .await
-        .map_err(|_| anyhow!("Failed to write page to storage"))?;
+        .await?;
 
         Ok(())
     }
 
-    pub async fn delete(&mut self, key: char) -> Result<()> {
+    pub async fn delete(&mut self, key: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{key}\"");
 
         map::remove_item(
@@ -153,8 +148,7 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
             &mut self.data_buffer,
             &(key as u8),
         )
-        .await
-        .map_err(|_| anyhow!("Failed to delete page from storage"))?;
+        .await?;
 
         Ok(())
     }

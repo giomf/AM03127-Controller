@@ -1,11 +1,12 @@
 pub mod dto;
 mod router;
 
-use crate::WEB_TASK_POOL_SIZE;
 use crate::panel::Panel;
+use crate::{WEB_TASK_POOL_SIZE, error::Error};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
-use picoserve::{AppRouter, AppWithStateBuilder, routing::PathRouter};
+use picoserve::response::{ErrorWithStatusCode, Response, StatusCode};
+use picoserve::{AppRouter, AppWithStateBuilder, response::IntoResponse, routing::PathRouter};
 
 #[derive(Clone, Copy)]
 pub struct SharedPanel(pub &'static Mutex<CriticalSectionRawMutex, Panel<'static>>);
@@ -36,6 +37,33 @@ impl AppWithStateBuilder for AppProps {
             .nest("/schedule", router::schedule_router())
             .nest("/schedules", router::schedules_router())
             .nest("/clock", router::clock_router())
+    }
+}
+
+impl ErrorWithStatusCode for Error {
+    fn status_code(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+impl IntoResponse for Error {
+    async fn write_to<
+        R: embedded_io_async::Read,
+        W: picoserve::response::ResponseWriter<Error = R::Error>,
+    >(
+        self,
+        connection: picoserve::response::Connection<'_, R>,
+        response_writer: W,
+    ) -> Result<picoserve::ResponseSent, W::Error> {
+        let (status_code, message) = match self {
+            Error::Storage(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+            Error::Uart(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+            Error::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+            Error::NotFound(message) => (StatusCode::NOT_FOUND, message),
+            Error::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
+        };
+        let response = Response::new(status_code, message.as_str());
+        response_writer.write_response(connection, response).await
     }
 }
 
