@@ -65,7 +65,6 @@ impl<'a> Value<'a> for Schedule {
 pub struct NvsStorageSection<T, const S: usize> {
     flash: BlockingAsync<FlashStorage>,
     flash_range: Range<u32>,
-    data_buffer: Vec<u8, S>,
     _type: PhantomData<T>,
 }
 
@@ -75,12 +74,9 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         let flash_end = flash_begin + flash_size;
         let flash_range = flash_begin..flash_end;
 
-        let data_buffer: Vec<u8, S> = Vec::new();
-
         NvsStorageSection {
             flash,
             flash_range,
-            data_buffer,
             _type: PhantomData,
         }
     }
@@ -88,11 +84,13 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     pub async fn read(&mut self, key: char) -> Result<Option<T>, Error> {
         log::info!("{LOGGER_NAME}: Reading page \"{key}\"");
 
+        let mut data_buffer = [0; S];
+
         let page = map::fetch_item::<u8, T, _>(
             &mut self.flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
-            &mut self.data_buffer,
+            &mut data_buffer,
             &(key as u8),
         )
         .await?;
@@ -105,18 +103,19 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         log::info!("{LOGGER_NAME}: Reading all pages");
 
         let mut cache = NoCache::new();
+        let mut data_buffer = [0; S];
 
         let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
             &mut self.flash,
             self.flash_range.clone(),
             &mut cache,
-            &mut self.data_buffer,
+            &mut data_buffer,
         )
         .await?;
 
         let mut pages = Vec::<T, N>::new();
 
-        while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut self.data_buffer).await? {
+        while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
             pages.push(page).expect("Failed to fill pages");
         }
         Ok(pages)
@@ -125,11 +124,12 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     pub async fn write(&mut self, key: char, value: T) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Writing page \"{key}\"");
 
+        let mut data_buffer = [0; S];
         map::store_item(
             &mut self.flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
-            &mut self.data_buffer,
+            &mut data_buffer,
             &(key as u8),
             &value,
         )
@@ -141,11 +141,13 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     pub async fn delete(&mut self, key: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{key}\"");
 
+        let mut data_buffer = [0; S];
+
         map::remove_item(
             &mut self.flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
-            &mut self.data_buffer,
+            &mut data_buffer,
             &(key as u8),
         )
         .await?;

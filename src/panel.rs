@@ -26,19 +26,27 @@ const MAX_SCHEDULES: usize = 5; // A - E
 const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
 const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Page>();
 const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Schedule>();
+const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE;
+const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE;
 
 pub type Pages = Vec<Page, MAX_PAGES>;
 pub type Schedules = Vec<Schedule, MAX_SCHEDULES>;
 
 pub struct Panel<'a> {
     uart: Uart<'a>,
-    page_storage: NvsStorageSection<Page, { KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE }>,
-    schedule_storage: NvsStorageSection<Schedule, { KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE }>,
+    page_storage: NvsStorageSection<Page, { PAGE_ENTRY_SIZE }>,
+    schedule_storage: NvsStorageSection<Schedule, { SCHEDULE_ENTRY_SIZE }>,
 }
 
 impl<'a> Panel<'a> {
     pub fn new(uart: Uart<'a>) -> Self {
+        log::info!(
+            "{LOGGER_NAME}: Creating page storage beginning at {PAGE_STORAGE_BEGIN} size of {PAGE_STORAGE_SIZE} and data buffer size of {PAGE_ENTRY_SIZE}"
+        );
         let page_storage = NvsStorageSection::new(PAGE_STORAGE_BEGIN, PAGE_STORAGE_SIZE);
+        log::info!(
+            "{LOGGER_NAME}: Creating schedule storage beginning at {SCHEDULE_STORAGE_BEGIN} size of {SCHEDULE_STORAGE_SIZE} and data buffer size of {SCHEDULE_ENTRY_SIZE}"
+        );
         let schedule_storage =
             NvsStorageSection::new(SCHEDULE_STORAGE_BEGIN, SCHEDULE_STORAGE_SIZE);
         Self {
