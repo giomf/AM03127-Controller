@@ -1,10 +1,12 @@
 pub mod dto;
-mod router;
+mod layers;
+mod routers;
 
 use crate::panel::Panel;
 use crate::{WEB_TASK_POOL_SIZE, error::Error};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
+use layers::PreHandlerLogLayer;
 use picoserve::response::{ErrorWithStatusCode, Response, StatusCode};
 use picoserve::{AppRouter, AppWithStateBuilder, response::IntoResponse, routing::PathRouter};
 
@@ -31,12 +33,13 @@ impl AppWithStateBuilder for AppProps {
 
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
         picoserve::Router::new()
-            .nest("/", router::static_router())
-            .nest("/page", router::page_router())
-            .nest("/pages", router::pages_router())
-            .nest("/schedule", router::schedule_router())
-            .nest("/schedules", router::schedules_router())
-            .nest("/clock", router::clock_router())
+            .nest("/", routers::static_router())
+            .nest("/page", routers::page_router())
+            .nest("/pages", routers::pages_router())
+            .nest("/schedule", routers::schedule_router())
+            .nest("/schedules", routers::schedules_router())
+            .nest("/clock", routers::clock_router())
+            .layer(PreHandlerLogLayer)
     }
 }
 

@@ -4,7 +4,6 @@ use crate::am03127::page_content::Page;
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::error::Error;
-use crate::panel::{Pages, Schedules};
 use core::convert::From;
 use dto::{DateTimeDto, PageDto, ScheduleDto};
 use picoserve::extract::Json;
@@ -31,7 +30,13 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
                 log::info!("{LOGGER_NAME}: Display clock");
 
                 let mut panel = shared_panel.lock().await;
-                panel.display_clock('A').await
+                match panel.display_clock('A').await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         )
         .post(
@@ -41,8 +46,13 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
                 let date_time = DateTime::from(date_time_dto);
 
                 let mut panel = shared_panel.lock().await;
-                panel.set_clock(date_time).await?;
-                Ok::<(), Error>(())
+                match panel.set_clock(date_time).await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         ),
     )
@@ -59,9 +69,13 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
                 }
 
                 let mut panel = shared_panel.lock().await;
-                match panel.get_page(page_id).await? {
-                    Some(page) => Ok(Json(page)),
-                    None => Err(Error::NotFound("Page not found".into())),
+                match panel.get_page(page_id).await {
+                    Ok(Some(page)) => Ok(Json(page)),
+                    Ok(None) => Err(Error::NotFound("Page not found".into())),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
                 }
             },
         )
@@ -77,9 +91,13 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
 
                 let page = Page::from_dto_with_id(page_id, page_dto);
                 let mut panel = shared_panel.lock().await;
-                panel.set_page(page_id, page).await?;
-                log::info!("{LOGGER_NAME}: Setting page \"{page_id}\" successful");
-                Ok(())
+                match panel.set_page(page_id, page).await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         )
         .delete(
@@ -90,8 +108,13 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
                 log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
                 let mut panel = shared_panel.lock().await;
-                panel.delete_page(page_id).await?;
-                Ok(())
+                match panel.delete_page(page_id).await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         ),
     )
@@ -103,8 +126,13 @@ pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
         get(
             |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                 let mut panel = shared_panel.lock().await;
-                let pages = panel.get_pages().await?;
-                Ok::<Json<Pages>, Error>(Json(pages))
+                match panel.get_pages().await {
+                    Ok(pages) => Ok(Json(pages)),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         ),
     )
@@ -121,9 +149,13 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
                 }
 
                 let mut panel = shared_panel.lock().await;
-                match panel.get_schedule(schedule_id).await? {
-                    Some(schedule) => Ok(Json(schedule)),
-                    None => Err(Error::NotFound("Schedule not found".into())),
+                match panel.get_schedule(schedule_id).await {
+                    Ok(Some(schedule)) => Ok(Json(schedule)),
+                    Ok(None) => Err(Error::NotFound("Schedule not found".into())),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
                 }
             },
         )
@@ -138,8 +170,13 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
                 let schedule = Schedule::from_dto_with_id(schedule, schedule_id);
 
                 let mut panel = shared_panel.lock().await;
-                panel.set_schedule(schedule_id, schedule).await?;
-                Ok(())
+                match panel.set_schedule(schedule_id, schedule).await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         )
         .delete(
@@ -150,8 +187,13 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
                 }
 
                 let mut panel = shared_panel.lock().await;
-                panel.delete_schedule(schedule_id).await?;
-                Ok(())
+                match panel.delete_schedule(schedule_id).await {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         ),
     )
@@ -163,8 +205,13 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
         get(
             |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                 let mut panel = shared_panel.lock().await;
-                let schedules = panel.get_schedules().await?;
-                Ok::<Json<Schedules>, Error>(Json(schedules))
+                match panel.get_schedules().await {
+                    Ok(schedules) => Ok(Json(schedules)),
+                    Err(err) => {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        Err(err)
+                    }
+                }
             },
         ),
     )
