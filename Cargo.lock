@@ -3,6 +3,37 @@
 version = 4
 
 [[package]]
+name = "am03127-controller"
+version = "0.1.0"
+dependencies = [
+ "critical-section",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-net",
+ "embassy-sync",
+ "embassy-time",
+ "embedded-io",
+ "embedded-io-async",
+ "embedded-storage",
+ "embedded-storage-async",
+ "esp-alloc",
+ "esp-backtrace",
+ "esp-hal",
+ "esp-hal-embassy",
+ "esp-println",
+ "esp-storage",
+ "esp-wifi",
+ "heapless 0.7.17",
+ "log",
+ "picoserve",
+ "postcard",
+ "sequential-storage",
+ "serde",
+ "smoltcp",
+ "static_cell",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -549,37 +580,6 @@ dependencies = [
  "basic-toml",
  "serde",
  "strum 0.26.3",
-]
-
-[[package]]
-name = "esp-no-std"
-version = "0.1.0"
-dependencies = [
- "critical-section",
- "embassy-embedded-hal",
- "embassy-executor",
- "embassy-net",
- "embassy-sync",
- "embassy-time",
- "embedded-io",
- "embedded-io-async",
- "embedded-storage",
- "embedded-storage-async",
- "esp-alloc",
- "esp-backtrace",
- "esp-hal",
- "esp-hal-embassy",
- "esp-println",
- "esp-storage",
- "esp-wifi",
- "heapless 0.7.17",
- "log",
- "picoserve",
- "postcard",
- "sequential-storage",
- "serde",
- "smoltcp",
- "static_cell",
 ]
 
 [[package]]

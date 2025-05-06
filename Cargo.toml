@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name    = "esp-no-std"
+name    = "am03127-controller"
 version = "0.1.0"
 
 [dependencies]
