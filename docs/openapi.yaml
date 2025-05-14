@@ -105,6 +105,32 @@ paths:
             text/plain:
               schema:
                 type: string
+    post:
+      summary: Create or update multiple pages
+      description: Creates or updates multiple pages at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Page'
+      responses:
+        '200':
+          description: Pages created or updated successfully
+        '400':
+          description: Invalid request body
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
   /schedule/{scheduleId}:
     parameters:
       - name: scheduleId
@@ -197,6 +223,32 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Schedule'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Create or update multiple schedules
+      description: Creates or updates multiple schedules at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Schedule'
+      responses:
+        '200':
+          description: Schedules created or updated successfully
+        '400':
+          description: Invalid request body
+          content:
+            text/plain:
+              schema:
+                type: string
         '500':
           description: Internal server error
           content:

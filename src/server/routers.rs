@@ -3,6 +3,7 @@ use crate::am03127::page_content::Page;
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::error::Error;
+use crate::panel::{Pages, Schedules};
 use core::convert::From;
 use dto::{DateTimeDto, PageDto, ScheduleDto};
 use picoserve::extract::Json;
@@ -152,6 +153,19 @@ pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
                     }
                 }
             },
+        )
+        .post(
+            |State(SharedPanel(shared_panel)): State<SharedPanel>,
+             Json::<Pages, JSON_DESERIALIZE_BUFFER_SIZE>(pages)| async move {
+                let mut panel = shared_panel.lock().await;
+                for page in pages {
+                    if let Err(err) = panel.set_page(page.id, page).await {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        return Err(err);
+                    }
+                }
+                Ok(())
+            },
         ),
     )
 }
@@ -238,6 +252,20 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
                         Err(err)
                     }
                 }
+            },
+        )
+        .post(
+            |State(SharedPanel(shared_panel)): State<SharedPanel>,
+             Json::<Schedules, JSON_DESERIALIZE_BUFFER_SIZE>(schedules)| async move {
+                let mut panel = shared_panel.lock().await;
+                for schedule in schedules {
+                    if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
+                        log::error!("{LOGGER_NAME}: {err}");
+                        return Err(err);
+                    }
+                }
+
+                Ok(())
             },
         ),
     )

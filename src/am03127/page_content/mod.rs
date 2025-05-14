@@ -226,7 +226,7 @@ pub struct Page {
     /// Line number (usually 1)
     line: u8,
     /// Page ID (A-Z)
-    page: char,
+    pub id: char,
     /// Effect for how the page appears
     pub leading: Leading,
     /// Effect for how the page disappears
@@ -251,7 +251,7 @@ impl Page {
         self.line = line;
         self
     }
-    
+
     /// Sets the page ID
     ///
     /// # Arguments
@@ -260,10 +260,10 @@ impl Page {
     /// # Returns
     /// * `Self` - Returns self for method chaining
     pub fn page(mut self, page: char) -> Self {
-        self.page = page;
+        self.id = page;
         self
     }
-    
+
     /// Sets the leading effect for the page
     ///
     /// # Arguments
@@ -275,7 +275,7 @@ impl Page {
         self.leading = leading;
         self
     }
-    
+
     /// Sets the lagging effect for the page
     ///
     /// # Arguments
@@ -287,7 +287,7 @@ impl Page {
         self.lagging = lagging;
         self
     }
-    
+
     /// Sets the waiting mode and speed for the page
     ///
     /// # Arguments
@@ -299,7 +299,7 @@ impl Page {
         self.waiting_mode_and_speed = waiting_mode_and_speed;
         self
     }
-    
+
     /// Sets the message content for the page
     ///
     /// # Arguments
@@ -361,7 +361,7 @@ impl Display for Page {
         write!(
             f,
             "<L{}><P{}><F{}><M{}><WA><F{}>{}",
-            self.line, self.page, self.leading, self.waiting_mode_and_speed, self.lagging, message
+            self.line, self.id, self.leading, self.waiting_mode_and_speed, self.lagging, message
         )
     }
 }
@@ -369,7 +369,7 @@ impl Display for Page {
 impl Default for Page {
     fn default() -> Self {
         Self {
-            page: DEFAULT_PAGE,
+            id: DEFAULT_PAGE,
             line: DEFAULT_LINE,
             leading: Default::default(),
             lagging: Default::default(),

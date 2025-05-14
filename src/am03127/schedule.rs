@@ -10,13 +10,13 @@ use core::fmt::Display;
 const PAGES_MAX_CHARS: usize = 32;
 
 /// Represents a schedule for displaying pages on the LED panel
-/// 
+///
 /// A schedule defines when specific pages should be displayed based on time ranges.
 /// Each schedule has an ID, a start time, an end time, and a list of page IDs to display.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Schedule {
     /// Unique identifier for the schedule (A-Z)
-    id: char,
+    pub id: char,
     /// Start time for the schedule
     from: DateTime,
     /// End time for the schedule
