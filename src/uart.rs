@@ -98,10 +98,8 @@ impl<'a> Uart<'a> {
 
         log::debug!("{LOGGER_NAME}: Interpreting response as: {}", response);
 
-        if response.starts_with("ACK") {
-            return Ok(());
-        } else if response.starts_with("NACK") {
-            return Err(Error::Uart("Failed get positive response from uart".into()));
+        if response.starts_with("NACK") {
+            log::error!("Failed get positive response from uart")
         }
 
         Ok(())
