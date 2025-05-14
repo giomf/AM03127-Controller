@@ -1,4 +1,7 @@
-use crate::{am03127, error::Error};
+use crate::{
+    am03127::{self, COMMAND_STRING_SIZE},
+    error::Error,
+};
 use embedded_io_async::Write;
 use esp_hal::{
     Async,
@@ -7,6 +10,7 @@ use esp_hal::{
     peripherals::UART1,
     uart::{Config, DataBits, Parity, Uart as UartDriver},
 };
+use heapless::String;
 
 /// Baud rate for UART communication with the LED panel
 const BAUD_RATE: u32 = 9600;
@@ -65,8 +69,13 @@ impl<'a> Uart<'a> {
     pub async fn init(&mut self, id: u8) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Initialize panel with ID: {id}");
         let command = am03127::set_id(id);
-        self.uart.write_all(&command.as_bytes()).await?;
+        self.write_unchecked(command).await?;
+        Ok(())
+    }
 
+    async fn write_unchecked(&mut self, data: String<COMMAND_STRING_SIZE>) -> Result<(), Error> {
+        log::debug!("{LOGGER_NAME}: Sending {data}");
+        self.uart.write_all(data.as_bytes()).await?;
         Ok(())
     }
 
@@ -78,8 +87,9 @@ impl<'a> Uart<'a> {
     /// # Returns
     /// * `Ok(())` if the write was successful and the panel acknowledged it
     /// * `Err(Error)` if the write failed or the panel rejected the command
-    pub async fn write(&mut self, data: &[u8]) -> Result<(), Error> {
-        self.uart.write_all(data).await?;
+    pub async fn write(&mut self, data: String<COMMAND_STRING_SIZE>) -> Result<(), Error> {
+        log::debug!("{LOGGER_NAME}: Sending {data}");
+        self.uart.write_all(data.as_bytes()).await?;
         let mut buffer = [0u8; READ_BUFFER_SIZE];
         let bytes_read = self.uart.read_async(&mut buffer).await?;
 

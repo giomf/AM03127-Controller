@@ -8,6 +8,7 @@ use esp_storage::FlashStorage;
 use heapless::Vec;
 use sequential_storage::{
     cache::NoCache,
+    erase_all,
     map::{self, SerializationError, Value},
 };
 
@@ -21,7 +22,7 @@ pub const PAGE_STORAGE_SIZE: u32 = 0x3000;
 /// Starting address for schedule storage in flash memory
 pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
 /// Size of the schedule storage area in flash memory
-pub const SCHEDULE_STORAGE_SIZE: u32 = 0x1000;
+pub const SCHEDULE_STORAGE_SIZE: u32 = 0x3000;
 
 /// Implementation of Value trait for Page to enable serialization/deserialization
 impl<'a> Value<'a> for Page {
@@ -145,7 +146,7 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     /// * `Ok(None)` - If the item doesn't exist
     /// * `Err(Error)` - If reading failed
     pub async fn read(&mut self, key: char) -> Result<Option<T>, Error> {
-        log::info!("{LOGGER_NAME}: Reading page \"{key}\"");
+        log::info!("{LOGGER_NAME}: Reading \"{key}\"");
 
         let mut data_buffer = [0; S];
 
@@ -171,25 +172,32 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     /// * `Ok(Vec<T, N>)` - Vector of all items
     /// * `Err(Error)` - If reading failed
     pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>, Error> {
-        log::info!("{LOGGER_NAME}: Reading all pages");
+        log::info!("{LOGGER_NAME}: Reading all");
 
-        let mut cache = NoCache::new();
-        let mut data_buffer = [0; S];
+        // let mut cache = NoCache::new();
+        // let mut data_buffer = [0; S];
 
-        let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
-            &mut self.flash,
-            self.flash_range.clone(),
-            &mut cache,
-            &mut data_buffer,
-        )
-        .await?;
-
-        let mut pages = Vec::<T, N>::new();
-
-        while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
-            pages.push(page).expect("Failed to fill pages");
+        let mut values = Vec::<T, N>::new();
+        for key in 'A'..'Z' {
+            if let Some(value) = self.read(key).await? {
+                values
+                    .push(value)
+                    .map_err(|_| Error::Internal("Failed to fill value vector".into()))?;
+            }
         }
-        Ok(pages)
+
+        // let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
+        //     &mut self.flash,
+        //     self.flash_range.clone(),
+        //     &mut cache,
+        //     &mut data_buffer,
+        // )
+        // .await?;
+
+        // while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
+        //     pages.push(page).expect("Failed to fill vector");
+        // }
+        Ok(values)
     }
 
     /// Writes an item to storage
@@ -202,7 +210,7 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     /// * `Ok(())` - If writing was successful
     /// * `Err(Error)` - If writing failed
     pub async fn write(&mut self, key: char, value: T) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Writing page \"{key}\"");
+        log::info!("{LOGGER_NAME}: Writing \"{key}\"");
 
         let mut data_buffer = [0; S];
         map::store_item(
@@ -227,7 +235,7 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     /// * `Ok(())` - If deletion was successful
     /// * `Err(Error)` - If deletion failed
     pub async fn delete(&mut self, key: char) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Deleting page \"{key}\"");
+        log::info!("{LOGGER_NAME}: Deleting \"{key}\"");
 
         let mut data_buffer = [0; S];
 
@@ -240,6 +248,13 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
         )
         .await?;
 
+        Ok(())
+    }
+
+    pub async fn delete_all(&mut self) -> Result<(), Error> {
+        log::info!("{LOGGER_NAME}: Deleting all");
+        // Todo consider using remove_all_items
+        erase_all(&mut self.flash, self.flash_range.clone()).await?;
         Ok(())
     }
 }

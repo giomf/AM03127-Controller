@@ -62,7 +62,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         get(
             |page_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
-                if !is_id_valid(page_id) {
+                if !is_page_id_valid(page_id) {
                     return Err(Error::BadRequest("Page ID not valid".into()));
                 }
 
@@ -82,7 +82,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
              State(SharedPanel(shared_panel)): State<SharedPanel>,
              Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
                 log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
-                if !is_id_valid(page_id) {
+                if !is_page_id_valid(page_id) {
                     return Err(Error::BadRequest("Page ID not valid".into()));
                 }
                 log::debug!("{LOGGER_NAME}: {:?}", page);
@@ -99,7 +99,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         )
         .delete(
             |page_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
-                if !is_id_valid(page_id) {
+                if !is_page_id_valid(page_id) {
                     return Err(Error::BadRequest("Page ID not valid".into()));
                 }
                 log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
@@ -162,7 +162,7 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
         get(
             |schedule_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
-                if !is_id_valid(schedule_id) {
+                if !is_page_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
@@ -182,7 +182,7 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
              State(SharedPanel(shared_panel)): State<SharedPanel>,
              Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
                 log::info!("{LOGGER_NAME}: Setting schedule {schedule_id}");
-                if !is_id_valid(schedule_id) {
+                if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
@@ -199,7 +199,7 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
         .delete(
             |schedule_id: char, State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
                 log::info!("{LOGGER_NAME}: Deleting schedule {schedule_id}");
-                if !is_id_valid(schedule_id) {
+                if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
@@ -252,6 +252,24 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
     )
 }
 
+pub fn delete_all_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+    picoserve::Router::new().route(
+        "",
+        post(
+            |State(SharedPanel(shared_panel)): State<SharedPanel>| async move {
+                let mut panel = shared_panel.lock().await;
+
+                if let Err(err) = panel.delete_all().await {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    return Err(err);
+                }
+
+                Ok(())
+            },
+        ),
+    )
+}
+
 /// Checks if an ID is valid (A-Z)
 ///
 /// # Arguments
@@ -260,6 +278,18 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
 /// # Returns
 /// * `true` if the ID is valid (A-Z)
 /// * `false` otherwise
-fn is_id_valid(id: char) -> bool {
+fn is_page_id_valid(id: char) -> bool {
     id >= 'A' && id <= 'Z'
+}
+
+/// Checks if an ID is valid page(A-Z)
+///
+/// # Arguments
+/// * `id` - The ID to check
+///
+/// # Returns
+/// * `true` if the ID is valid (A-Z)
+/// * `false` otherwise
+fn is_schedule_id_valid(id: char) -> bool {
+    id >= 'A' && id <= 'E'
 }

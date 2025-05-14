@@ -1,7 +1,7 @@
 use crate::{
     am03127::{
         CommandAble,
-        delete::{DeletePage, DeleteSchedule},
+        delete::{DeleteAll, DeletePage, DeleteSchedule},
         page_content::{
             Page,
             formatting::{Clock, ColumnStart, Font},
@@ -95,22 +95,24 @@ impl<'a> Panel<'a> {
     }
 
     async fn init_pages(&mut self) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Initialize pages");
+        log::info!("{LOGGER_NAME}: Deleting pages");
+
         let pages: Pages = self.page_storage.read_all().await?;
         for page in pages {
             let command = page.command(DEFAULT_PANEL_ID);
-            self.uart.write(command.as_bytes()).await?;
+            self.uart.write(command).await?;
         }
 
         Ok(())
     }
 
     async fn init_schedules(&mut self) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Initialize schedules");
+        log::info!("{LOGGER_NAME}: Deleting schedules");
+
         let schedules: Schedules = self.schedule_storage.read_all().await?;
         for schedule in schedules {
             let command = schedule.command(DEFAULT_PANEL_ID);
-            self.uart.write(command.as_bytes()).await?;
+            self.uart.write(command).await?;
         }
 
         Ok(())
@@ -155,7 +157,7 @@ impl<'a> Panel<'a> {
     pub async fn set_clock(&mut self, date_time: DateTime) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Setting clock");
         let command = date_time.command(DEFAULT_PANEL_ID);
-        self.uart.write(command.as_bytes()).await?;
+        self.uart.write(command).await?;
 
         Ok(())
     }
@@ -175,7 +177,7 @@ impl<'a> Panel<'a> {
 
         let command = page.command(DEFAULT_PANEL_ID);
 
-        self.uart.write(command.as_bytes()).await?;
+        self.uart.write(command).await?;
         self.page_storage.write(page_id, page).await?;
 
         Ok(())
@@ -220,7 +222,7 @@ impl<'a> Panel<'a> {
             .page_id(page_id)
             .command(DEFAULT_PANEL_ID);
 
-        self.uart.write(command.as_bytes()).await?;
+        self.uart.write(command).await?;
         self.page_storage.delete(page_id).await?;
 
         Ok(())
@@ -244,7 +246,7 @@ impl<'a> Panel<'a> {
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 
         let command = schedule.command(DEFAULT_PANEL_ID);
-        self.uart.write(command.as_bytes()).await?;
+        self.uart.write(command).await?;
         self.schedule_storage.write(schedule_id, schedule).await?;
 
         Ok(())
@@ -286,9 +288,19 @@ impl<'a> Panel<'a> {
         log::info!("{LOGGER_NAME}: Deleting page \"{schedule_id}\"");
 
         let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
-        self.uart.write(command.as_bytes()).await?;
+        self.uart.write(command).await?;
         self.schedule_storage.delete(schedule_id).await?;
 
+        Ok(())
+    }
+
+    pub async fn delete_all(&mut self) -> Result<(), Error> {
+        log::info!("{LOGGER_NAME}: Deleting all");
+
+        let command = DeleteAll {}.command(DEFAULT_PANEL_ID);
+        self.uart.write(command).await?;
+        self.page_storage.delete_all().await?;
+        self.schedule_storage.delete_all().await?;
         Ok(())
     }
 }

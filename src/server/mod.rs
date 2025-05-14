@@ -59,6 +59,7 @@ impl AppWithStateBuilder for AppProps {
             .nest("/schedule", routers::schedule_router())
             .nest("/schedules", routers::schedules_router())
             .nest("/clock", routers::clock_router())
+            .nest("/reset", routers::delete_all_router())
             .layer(PreHandlerLogLayer)
     }
 }

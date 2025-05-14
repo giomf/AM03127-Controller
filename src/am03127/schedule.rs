@@ -1,10 +1,10 @@
-use super::{CommandAble, DEFAULT_SCHEDULE, realtime_clock::DateTime};
+use super::{CommandAble, DEFAULT_SCHEDULE};
 use core::fmt::Display;
-use heapless::{String, Vec};
+use heapless::String;
 use serde::{Deserialize, Serialize};
 
 /// Maximum number of characters allowed in the pages field
-const PAGES_MAX_CHARS: usize = 32;
+const MAX_SCHEDULES_PAGES: usize = 31;
 
 /// Represents a schedule for displaying pages on the LED panel
 ///
@@ -15,11 +15,11 @@ pub struct Schedule {
     /// Unique identifier for the schedule (A-Z)
     pub id: char,
     /// Start time for the schedule
-    from: DateTime,
+    from: ScheduleDateTime,
     /// End time for the schedule
-    to: DateTime,
+    to: ScheduleDateTime,
     /// List of page IDs to display during this schedule
-    pages: Vec<char, PAGES_MAX_CHARS>,
+    pages: String<MAX_SCHEDULES_PAGES>,
 }
 
 impl CommandAble for Schedule {}
@@ -44,7 +44,7 @@ impl Schedule {
     ///
     /// # Returns
     /// * `Self` - Returns self for method chaining
-    pub fn from(mut self, from: DateTime) -> Self {
+    pub fn from(mut self, from: ScheduleDateTime) -> Self {
         self.from = from;
         self
     }
@@ -56,7 +56,7 @@ impl Schedule {
     ///
     /// # Returns
     /// * `Self` - Returns self for method chaining
-    pub fn to(mut self, to: DateTime) -> Self {
+    pub fn to(mut self, to: ScheduleDateTime) -> Self {
         self.to = to;
         self
     }
@@ -68,7 +68,7 @@ impl Schedule {
     ///
     /// # Returns
     /// * `Self` - Returns self for method chaining
-    pub fn pages(mut self, pages: Vec<char, PAGES_MAX_CHARS>) -> Self {
+    pub fn pages(mut self, pages: String<MAX_SCHEDULES_PAGES>) -> Self {
         self.pages = pages;
         self
     }
@@ -76,11 +76,31 @@ impl Schedule {
 
 impl Display for Schedule {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let mut schedule = String::<PAGES_MAX_CHARS>::new();
-        for page_id in &self.pages {
-            schedule.push(page_id.clone()).unwrap();
-        }
-        write!(f, "<T{}>{}{}{}", self.id, self.from, self.to, schedule)
+        write!(f, "<T{}>{}{}{}", self.id, self.from, self.to, self.pages)
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct ScheduleDateTime {
+    /// Year (0-99)
+    year: u8,
+    /// Month (1-12)
+    month: u8,
+    /// Day of the month (1-31)
+    day: u8,
+    /// Hour (0-23)
+    hour: u8,
+    /// Minute (0-59)
+    minute: u8,
+}
+
+impl Display for ScheduleDateTime {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{:02}{:02}{:02}{:02}{:02}",
+            self.year, self.month, self.day, self.hour, self.minute
+        )
     }
 }
 

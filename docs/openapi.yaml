@@ -138,8 +138,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: '^[A-Z]$'
-        description: Single uppercase letter (A-Z) identifying the schedule
+          pattern: '^[A-E]$'
+        description: Single uppercase letter (A-E) identifying the schedule
     get:
       summary: Get a specific schedule
       description: Retrieves a specific schedule by ID
@@ -274,8 +274,48 @@ paths:
             text/plain:
               schema:
                 type: string
+  /reset:
+    post:
+      summary: Delete all content
+      description: Deletes all pages and schedules from the LED panel
+      responses:
+        '200':
+          description: All content deleted successfully
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
 components:
   schemas:
+    Font:
+      type: string
+      enum:
+        - Normal
+        - Bold
+        - Narrow
+        - Large
+        - Long
+      description: Font style for text display
+    ColumnStart:
+      type: object
+      properties:
+        column:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 255
+          description: Starting column position (0-255)
+      required:
+        - column
+      description: Specifies the starting column for text
+    Clock:
+      type: string
+      enum:
+        - Date
+        - Time
+      description: Clock display format
     Leading:
       type: string
       enum:
@@ -343,17 +383,25 @@ components:
         line:
           type: integer
           format: uint8
-          description: Line number
+          default: 1
+          description: Line number (usually 1)
         id:
           type: string
           pattern: '^[A-Z]$'
+          default: "A"
           description: Page identifier (A-Z)
         leading:
           $ref: '#/components/schemas/Leading'
+          default: "immediate"
+          description: Animation effect for page entry
         lagging:
           $ref: '#/components/schemas/Lagging'
+          default: "hold"
+          description: Animation effect for page exit
         waiting_mode_and_speed:
           $ref: '#/components/schemas/WaitingModeAndSpeed'
+          default: "fastest_normal"
+          description: Display mode and speed while waiting
         message:
           type: string
           maxLength: 16
@@ -366,21 +414,20 @@ components:
       properties:
         id:
           type: string
-          pattern: '^[A-Z]$'
-          description: Schedule identifier (A-Z)
+          pattern: '^[A-E]$'
+          default: "A"
+          description: Schedule identifier (A-E)
         from:
-          $ref: '#/components/schemas/DateTime'
+          $ref: '#/components/schemas/ScheduleDateTime'
           description: Start date and time
         to:
-          $ref: '#/components/schemas/DateTime'
+          $ref: '#/components/schemas/ScheduleDateTime'
           description: End date and time
         pages:
-          type: array
-          items:
-            type: string
-            pattern: '^[A-Z]$'
-          maxItems: 32
-          description: List of page IDs to display in sequence
+          type: string
+          maxLength: 31
+          pattern: '^[A-Z]+$'
+          description: String of page IDs to display in sequence (e.g., "ABC")
       required:
         - id
         - from
@@ -392,6 +439,8 @@ components:
         year:
           type: integer
           format: uint8
+          minimum: 0
+          maximum: 99
           description: Year (last two digits)
         week:
           type: integer
@@ -436,3 +485,42 @@ components:
         - hour
         - minute
         - second
+    ScheduleDateTime:
+      type: object
+      properties:
+        year:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 99
+          description: Year (last two digits)
+        month:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 12
+          description: Month
+        day:
+          type: integer
+          format: uint8
+          minimum: 1
+          maximum: 31
+          description: Day of month
+        hour:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 23
+          description: Hour (24-hour format)
+        minute:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 59
+          description: Minute
+      required:
+        - year
+        - month
+        - day
+        - hour
+        - minute
