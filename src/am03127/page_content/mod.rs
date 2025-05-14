@@ -6,8 +6,6 @@ use core::fmt::{self, Display};
 use heapless::String;
 use serde::{Deserialize, Serialize};
 
-use crate::server::dto::PageDto;
-
 use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, MESSAGE_STRING_SIZE};
 
 /// Leading effects for displaying content on the LED panel
@@ -311,23 +309,6 @@ impl Page {
         self.message.clear();
         let _ = self.message.push_str(message);
         self
-    }
-
-    /// Creates a Page from a DTO with a specific ID
-    ///
-    /// # Arguments
-    /// * `page` - The page ID
-    /// * `dto` - The PageDto containing page data
-    ///
-    /// # Returns
-    /// * A new Page instance
-    pub fn from_dto_with_id(page: char, dto: PageDto) -> Self {
-        Self::default()
-            .page(page)
-            .leading(dto.leading)
-            .lagging(dto.lagging)
-            .waiting_mode_and_speed(dto.waiting_mode_and_speed)
-            .message(&dto.text)
     }
 
     /// Replaces European characters with their panel-specific codes

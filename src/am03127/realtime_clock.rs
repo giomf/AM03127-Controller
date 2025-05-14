@@ -1,11 +1,8 @@
 #![allow(dead_code)]
 
-use serde::{Deserialize, Serialize};
-
-use crate::server::dto::DateTimeDto;
-
 use super::CommandAble;
 use core::fmt::Display;
+use serde::{Deserialize, Serialize};
 
 /// Represents a date and time for the LED panel's real-time clock
 ///
@@ -29,26 +26,6 @@ pub struct DateTime {
     second: u8,
 }
 
-impl From<DateTimeDto> for DateTime {
-    /// Converts a DateTimeDto to a DateTime
-    ///
-    /// # Arguments
-    /// * `value` - The DateTimeDto to convert
-    ///
-    /// # Returns
-    /// * A new DateTime instance
-    fn from(value: DateTimeDto) -> Self {
-        DateTime::default()
-            .year(value.year)
-            .month(value.month)
-            .week(value.week)
-            .day(value.day)
-            .hour(value.hour)
-            .minute(value.minute)
-            .second(value.second)
-    }
-}
-
 impl CommandAble for DateTime {}
 
 impl DateTime {
@@ -63,7 +40,7 @@ impl DateTime {
         self.year = year;
         self
     }
-    
+
     /// Sets the week of the year
     ///
     /// # Arguments
@@ -75,7 +52,7 @@ impl DateTime {
         self.week = week;
         self
     }
-    
+
     /// Sets the month
     ///
     /// # Arguments
@@ -87,7 +64,7 @@ impl DateTime {
         self.month = month;
         self
     }
-    
+
     /// Sets the day of the month
     ///
     /// # Arguments
@@ -99,7 +76,7 @@ impl DateTime {
         self.day = day;
         self
     }
-    
+
     /// Sets the hour
     ///
     /// # Arguments
@@ -111,7 +88,7 @@ impl DateTime {
         self.hour = hour;
         self
     }
-    
+
     /// Sets the minute
     ///
     /// # Arguments
@@ -123,7 +100,7 @@ impl DateTime {
         self.minute = minute;
         self
     }
-    
+
     /// Sets the second
     ///
     /// # Arguments

@@ -87,7 +87,31 @@ impl<'a> Panel<'a> {
     /// * `Ok(())` if initialization was successful
     /// * `Err(Error)` if initialization failed
     pub async fn init(&mut self) -> Result<(), Error> {
+        log::info!("{LOGGER_NAME}: Initialize panel");
         self.uart.init(DEFAULT_PANEL_ID).await?;
+        self.init_pages().await?;
+        self.init_schedules().await?;
+        Ok(())
+    }
+
+    async fn init_pages(&mut self) -> Result<(), Error> {
+        log::info!("{LOGGER_NAME}: Initialize pages");
+        let pages: Pages = self.page_storage.read_all().await?;
+        for page in pages {
+            let command = page.command(DEFAULT_PANEL_ID);
+            self.uart.write(command.as_bytes()).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn init_schedules(&mut self) -> Result<(), Error> {
+        log::info!("{LOGGER_NAME}: Initialize schedules");
+        let schedules: Schedules = self.schedule_storage.read_all().await?;
+        for schedule in schedules {
+            let command = schedule.command(DEFAULT_PANEL_ID);
+            self.uart.write(command.as_bytes()).await?;
+        }
 
         Ok(())
     }

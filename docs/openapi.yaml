@@ -52,7 +52,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PageDto'
+              $ref: '#/components/schemas/Page'
       responses:
         '200':
           description: Page created or updated successfully
@@ -176,7 +176,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ScheduleDto'
+              $ref: '#/components/schemas/Schedule'
       responses:
         '200':
           description: Schedule created or updated successfully
@@ -256,18 +256,6 @@ paths:
               schema:
                 type: string
   /clock:
-    get:
-      summary: Display clock on panel
-      description: Displays the current time and date on the panel (page A)
-      responses:
-        '200':
-          description: Clock displayed successfully
-        '500':
-          description: Internal server error
-          content:
-            text/plain:
-              schema:
-                type: string
     post:
       summary: Set panel clock
       description: Sets the internal clock of the LED panel
@@ -276,7 +264,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DateTimeDto'
+              $ref: '#/components/schemas/DateTime'
       responses:
         '200':
           description: Clock set successfully
@@ -349,24 +337,6 @@ components:
         - slowest_song2
         - slowest_song3
       description: Display mode and speed while waiting
-    PageDto:
-      type: object
-      required:
-        - text
-      properties:
-        text:
-          type: string
-          maxLength: 16
-          description: Text content to display on the page
-        leading:
-          $ref: '#/components/schemas/Leading'
-          description: Entry animation effect
-        lagging:
-          $ref: '#/components/schemas/Lagging'
-          description: Exit animation effect
-        waiting_mode_and_speed:
-          $ref: '#/components/schemas/WaitingModeAndSpeed'
-          description: Display mode and speed while waiting
     Page:
       type: object
       properties:
@@ -374,7 +344,7 @@ components:
           type: integer
           format: uint8
           description: Line number
-        page:
+        id:
           type: string
           pattern: '^[A-Z]$'
           description: Page identifier (A-Z)
@@ -388,49 +358,9 @@ components:
           type: string
           maxLength: 16
           description: Text content displayed on the page
-    DateTimeDto:
-      type: object
-      properties:
-        day:
-          type: integer
-          format: uint8
-          minimum: 1
-          maximum: 31
-          description: Day of month
-        hour:
-          type: integer
-          format: uint8
-          minimum: 0
-          maximum: 23
-          description: Hour (24-hour format)
-        minute:
-          type: integer
-          format: uint8
-          minimum: 0
-          maximum: 59
-          description: Minute
-        month:
-          type: integer
-          format: uint8
-          minimum: 1
-          maximum: 12
-          description: Month
-        second:
-          type: integer
-          format: uint8
-          minimum: 0
-          maximum: 59
-          description: Second
-        year:
-          type: integer
-          format: uint8
-          description: Year (last two digits)
-        week:
-          type: integer
-          format: uint8
-          minimum: 1
-          maximum: 53
-          description: Week of year
+      required:
+        - id
+        - message
     Schedule:
       type: object
       properties:
@@ -451,6 +381,11 @@ components:
             pattern: '^[A-Z]$'
           maxItems: 32
           description: List of page IDs to display in sequence
+      required:
+        - id
+        - from
+        - to
+        - pages
     DateTime:
       type: object
       properties:
@@ -494,23 +429,10 @@ components:
           minimum: 0
           maximum: 59
           description: Second
-    ScheduleDto:
-      type: object
       required:
-        - from
-        - to
-        - pages
-      properties:
-        from:
-          $ref: '#/components/schemas/DateTimeDto'
-          description: Start date and time
-        to:
-          $ref: '#/components/schemas/DateTimeDto'
-          description: End date and time
-        pages:
-          type: array
-          items:
-            type: string
-            pattern: '^[A-Z]$'
-          maxItems: 32
-          description: List of page IDs to display in sequence
+        - year
+        - month
+        - day
+        - hour
+        - minute
+        - second

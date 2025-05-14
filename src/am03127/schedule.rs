@@ -1,10 +1,7 @@
-use heapless::{String, Vec};
-use serde::{Deserialize, Serialize};
-
-use crate::server::dto::ScheduleDto;
-
 use super::{CommandAble, DEFAULT_SCHEDULE, realtime_clock::DateTime};
 use core::fmt::Display;
+use heapless::{String, Vec};
+use serde::{Deserialize, Serialize};
 
 /// Maximum number of characters allowed in the pages field
 const PAGES_MAX_CHARS: usize = 32;
@@ -74,22 +71,6 @@ impl Schedule {
     pub fn pages(mut self, pages: Vec<char, PAGES_MAX_CHARS>) -> Self {
         self.pages = pages;
         self
-    }
-
-    /// Creates a Schedule from a DTO with a specific ID
-    ///
-    /// # Arguments
-    /// * `dto` - The ScheduleDto containing schedule data
-    /// * `id` - The ID to assign to the schedule
-    ///
-    /// # Returns
-    /// * `Self` - A new Schedule instance
-    pub fn from_dto_with_id(dto: ScheduleDto, id: char) -> Self {
-        Self::default()
-            .id(id)
-            .from(dto.from.into())
-            .to(dto.to.into())
-            .pages(dto.pages)
     }
 }
 
