@@ -1,4 +1,4 @@
-use super::{CommandAble, DEFAULT_SCHEDULE};
+use super::CommandAble;
 use core::fmt::Display;
 use heapless::String;
 use serde::{Deserialize, Serialize};
@@ -23,56 +23,6 @@ pub struct Schedule {
 }
 
 impl CommandAble for Schedule {}
-
-impl Schedule {
-    /// Sets the schedule ID
-    ///
-    /// # Arguments
-    /// * `schedule_id` - A character identifier for the schedule (A-Z)
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn id(mut self, schedule_id: char) -> Self {
-        self.id = schedule_id;
-        self
-    }
-
-    /// Sets the start time for the schedule
-    ///
-    /// # Arguments
-    /// * `from` - The DateTime when the schedule should start
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn from(mut self, from: ScheduleDateTime) -> Self {
-        self.from = from;
-        self
-    }
-
-    /// Sets the end time for the schedule
-    ///
-    /// # Arguments
-    /// * `to` - The DateTime when the schedule should end
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn to(mut self, to: ScheduleDateTime) -> Self {
-        self.to = to;
-        self
-    }
-
-    /// Sets the pages to be displayed during this schedule
-    ///
-    /// # Arguments
-    /// * `pages` - Vector of page IDs to display
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn pages(mut self, pages: String<MAX_SCHEDULES_PAGES>) -> Self {
-        self.pages = pages;
-        self
-    }
-}
 
 impl Display for Schedule {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -101,16 +51,5 @@ impl Display for ScheduleDateTime {
             "{:02}{:02}{:02}{:02}{:02}",
             self.year, self.month, self.day, self.hour, self.minute
         )
-    }
-}
-
-impl Default for Schedule {
-    fn default() -> Self {
-        Self {
-            id: DEFAULT_SCHEDULE,
-            from: Default::default(),
-            to: Default::default(),
-            pages: Default::default(),
-        }
     }
 }

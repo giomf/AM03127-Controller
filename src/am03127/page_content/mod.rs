@@ -6,7 +6,7 @@ use core::fmt::{self, Display};
 use heapless::String;
 use serde::{Deserialize, Serialize};
 
-use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, MESSAGE_STRING_SIZE};
+use super::{CommandAble, MESSAGE_STRING_SIZE};
 
 /// Leading effects for displaying content on the LED panel
 ///
@@ -238,79 +238,6 @@ pub struct Page {
 impl CommandAble for Page {}
 
 impl Page {
-    /// Sets the line number for the page
-    ///
-    /// # Arguments
-    /// * `line` - The line number
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn line(mut self, line: u8) -> Self {
-        self.line = line;
-        self
-    }
-
-    /// Sets the page ID
-    ///
-    /// # Arguments
-    /// * `page` - The page ID (A-Z)
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn page(mut self, page: char) -> Self {
-        self.id = page;
-        self
-    }
-
-    /// Sets the leading effect for the page
-    ///
-    /// # Arguments
-    /// * `leading` - The leading effect
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn leading(mut self, leading: Leading) -> Self {
-        self.leading = leading;
-        self
-    }
-
-    /// Sets the lagging effect for the page
-    ///
-    /// # Arguments
-    /// * `lagging` - The lagging effect
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn lagging(mut self, lagging: Lagging) -> Self {
-        self.lagging = lagging;
-        self
-    }
-
-    /// Sets the waiting mode and speed for the page
-    ///
-    /// # Arguments
-    /// * `waiting_mode_and_speed` - The waiting mode and speed
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn waiting_mode_and_speed(mut self, waiting_mode_and_speed: WaitingModeAndSpeed) -> Self {
-        self.waiting_mode_and_speed = waiting_mode_and_speed;
-        self
-    }
-
-    /// Sets the message content for the page
-    ///
-    /// # Arguments
-    /// * `message` - The message text
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn message(mut self, message: &str) -> Self {
-        self.message.clear();
-        let _ = self.message.push_str(message);
-        self
-    }
-
     /// Replaces European characters with their panel-specific codes
     ///
     /// # Arguments
@@ -344,18 +271,5 @@ impl Display for Page {
             "<L{}><P{}><F{}><M{}><WA><F{}>{}",
             self.line, self.id, self.leading, self.waiting_mode_and_speed, self.lagging, message
         )
-    }
-}
-
-impl Default for Page {
-    fn default() -> Self {
-        Self {
-            id: DEFAULT_PAGE,
-            line: DEFAULT_LINE,
-            leading: Default::default(),
-            lagging: Default::default(),
-            waiting_mode_and_speed: Default::default(),
-            message: String::new(),
-        }
     }
 }

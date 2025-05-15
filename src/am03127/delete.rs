@@ -12,50 +12,33 @@ impl Display for DeleteAll {
 
 /// Command to delete a specific page from the LED panel
 pub struct DeletePage {
+    /// ID of the page to delete (A-Z)
+    id: char,
     /// Line number (usually 1)
     line: u8,
-    /// ID of the page to delete (A-Z)
-    page_id: char,
 }
 
 impl CommandAble for DeletePage {}
 
 impl DeletePage {
-    /// Sets the line number for the delete command
-    ///
-    /// # Arguments
-    /// * `line` - The line number
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn line(mut self, line: u8) -> Self {
-        self.line = line;
-        self
-    }
-
-    /// Sets the page ID for the delete command
-    ///
-    /// # Arguments
-    /// * `page_id` - The ID of the page to delete
-    ///
-    /// # Returns
-    /// * `Self` - Returns self for method chaining
-    pub fn page_id(mut self, page_id: char) -> Self {
-        self.page_id = page_id;
-        self
+    pub fn new(id: char) -> Self {
+        DeletePage {
+            id,
+            line: DEFAULT_LINE,
+        }
     }
 }
 
 impl Display for DeletePage {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "<DL{}P{}>", self.line, self.page_id)
+        write!(f, "<DL{}P{}>", self.line, self.id)
     }
 }
 
 impl Default for DeletePage {
     fn default() -> Self {
         Self {
-            page_id: DEFAULT_PAGE,
+            id: DEFAULT_PAGE,
             line: DEFAULT_LINE,
         }
     }

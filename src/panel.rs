@@ -2,10 +2,7 @@ use crate::{
     am03127::{
         CommandAble,
         delete::{DeleteAll, DeletePage, DeleteSchedule},
-        page_content::{
-            Page,
-            formatting::{Clock, ColumnStart, Font},
-        },
+        page_content::Page,
         realtime_clock::DateTime,
         schedule::Schedule,
     },
@@ -16,8 +13,7 @@ use crate::{
     },
     uart::Uart,
 };
-use core::fmt::Write;
-use heapless::{String, Vec};
+use heapless::Vec;
 
 /// Logger name for panel-related log messages
 const LOGGER_NAME: &str = "Panel";
@@ -120,34 +116,6 @@ impl<'a> Panel<'a> {
         Ok(())
     }
 
-    /// Displays a clock on the specified page
-    ///
-    /// Creates a page showing the current time and date.
-    ///
-    /// # Arguments
-    /// * `page_id` - The ID of the page to display the clock on
-    ///
-    /// # Returns
-    /// * `Ok(())` if the clock was displayed successfully
-    /// * `Err(Error)` if displaying the clock failed
-    pub async fn _display_clock(&mut self, page_id: char) -> Result<(), Error> {
-        let mut message = String::<32>::new();
-        write!(
-            &mut message,
-            "{}{}{}{}",
-            Clock::Time,
-            Font::Narrow,
-            ColumnStart(41),
-            Clock::Date
-        )
-        .map_err(|_| Error::Internal("Failed to write command".into()))?;
-
-        let page = Page::default().message(&message.as_str());
-        self.set_page(page_id, page).await?;
-
-        Ok(())
-    }
-
     /// Sets the panel's internal clock
     ///
     /// # Arguments
@@ -220,9 +188,7 @@ impl<'a> Panel<'a> {
     pub async fn delete_page(&mut self, page_id: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting page \"{page_id}\"");
 
-        let command = DeletePage::default()
-            .page_id(page_id)
-            .command(DEFAULT_PANEL_ID);
+        let command = DeletePage::new(page_id).command(DEFAULT_PANEL_ID);
 
         self.uart.write(command).await?;
         self.page_storage.delete(page_id).await?;
