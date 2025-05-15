@@ -5,7 +5,7 @@ use crate::{
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 use embassy_embedded_hal::adapter::BlockingAsync;
 use esp_storage::FlashStorage;
-use heapless::Vec;
+use heapless::{FnvIndexMap, Vec};
 use sequential_storage::{
     cache::NoCache,
     erase_all,
@@ -23,6 +23,22 @@ pub const PAGE_STORAGE_SIZE: u32 = 0x3000;
 pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
 /// Size of the schedule storage area in flash memory
 pub const SCHEDULE_STORAGE_SIZE: u32 = 0x3000;
+
+pub trait IdAble {
+    fn get_id(&self) -> char;
+}
+
+impl IdAble for Page {
+    fn get_id(&self) -> char {
+        self.id
+    }
+}
+
+impl IdAble for Schedule {
+    fn get_id(&self) -> char {
+        self.id
+    }
+}
 
 /// Implementation of Value trait for Page to enable serialization/deserialization
 impl<'a> Value<'a> for Page {
@@ -115,7 +131,7 @@ pub struct NvsStorageSection<T, const S: usize> {
     _type: PhantomData<T>,
 }
 
-impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
+impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSection<T, S> {
     /// Creates a new storage section in flash memory
     ///
     /// # Arguments
@@ -174,29 +190,26 @@ impl<T: for<'a> Value<'a> + Debug, const S: usize> NvsStorageSection<T, S> {
     pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>, Error> {
         log::info!("{LOGGER_NAME}: Reading all");
 
-        // let mut cache = NoCache::new();
-        // let mut data_buffer = [0; S];
+        let mut cache = NoCache::new();
+        let mut data_buffer = [0; S];
 
-        let mut values = Vec::<T, N>::new();
-        for key in 'A'..'Z' {
-            if let Some(value) = self.read(key).await? {
-                values
-                    .push(value)
-                    .map_err(|_| Error::Internal("Failed to fill value vector".into()))?;
-            }
+        let mut values = FnvIndexMap::<_, _, N>::new();
+        // let mut values = Vec::<T, N>::new();
+
+        let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
+            &mut self.flash,
+            self.flash_range.clone(),
+            &mut cache,
+            &mut data_buffer,
+        )
+        .await?;
+
+        while let Some((_, value)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
+            values
+                .insert(value.get_id(), value)
+                .map_err(|_| Error::Internal("Failed set active value".into()))?;
         }
-
-        // let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
-        //     &mut self.flash,
-        //     self.flash_range.clone(),
-        //     &mut cache,
-        //     &mut data_buffer,
-        // )
-        // .await?;
-
-        // while let Some((_, page)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
-        //     pages.push(page).expect("Failed to fill vector");
-        // }
+        let values = values.values().cloned().collect();
         Ok(values)
     }
 

@@ -24,9 +24,11 @@ const LOGGER_NAME: &str = "Panel";
 /// Default ID for the LED panel
 const DEFAULT_PANEL_ID: u8 = 1;
 /// Maximum number of pages that can be stored (A-Z)
-const MAX_PAGES: usize = 24;
+/// Has to be a power of 2
+const MAX_PAGES: usize = 32;
 /// Maximum number of schedules that can be stored (A-E)
-const MAX_SCHEDULES: usize = 5;
+/// Has to be a power of 2
+const MAX_SCHEDULES: usize = 8;
 /// Size of a key in memory
 const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
 /// Size of a Page struct in memory
@@ -128,7 +130,7 @@ impl<'a> Panel<'a> {
     /// # Returns
     /// * `Ok(())` if the clock was displayed successfully
     /// * `Err(Error)` if displaying the clock failed
-    pub async fn display_clock(&mut self, page_id: char) -> Result<(), Error> {
+    pub async fn _display_clock(&mut self, page_id: char) -> Result<(), Error> {
         let mut message = String::<32>::new();
         write!(
             &mut message,

@@ -10,7 +10,7 @@ const MAX_SCHEDULES_PAGES: usize = 31;
 ///
 /// A schedule defines when specific pages should be displayed based on time ranges.
 /// Each schedule has an ID, a start time, an end time, and a list of page IDs to display.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Schedule {
     /// Unique identifier for the schedule (A-Z)
     pub id: char,
@@ -80,7 +80,7 @@ impl Display for Schedule {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ScheduleDateTime {
     /// Year (0-99)
     year: u8,
