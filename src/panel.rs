@@ -5,6 +5,7 @@ use crate::{
         page_content::Page,
         realtime_clock::DateTime,
         schedule::Schedule,
+        set_id,
     },
     error::Error,
     storage::{
@@ -86,14 +87,15 @@ impl<'a> Panel<'a> {
     /// * `Err(Error)` if initialization failed
     pub async fn init(&mut self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Initialize panel");
-        self.uart.init(DEFAULT_PANEL_ID).await?;
+        let command = set_id(DEFAULT_PANEL_ID);
+        self.uart.write(command).await?;
         self.init_pages().await?;
         self.init_schedules().await?;
         Ok(())
     }
 
     async fn init_pages(&mut self) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Deleting pages");
+        log::info!("{LOGGER_NAME}: Init pages");
 
         let pages: Pages = self.page_storage.read_all().await?;
         for page in pages {
@@ -105,7 +107,7 @@ impl<'a> Panel<'a> {
     }
 
     async fn init_schedules(&mut self) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Deleting schedules");
+        log::info!("{LOGGER_NAME}: Init schedules");
 
         let schedules: Schedules = self.schedule_storage.read_all().await?;
         for schedule in schedules {

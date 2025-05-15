@@ -58,27 +58,6 @@ impl<'a> Uart<'a> {
         Self { uart }
     }
 
-    /// Initializes the LED panel with a specific ID
-    ///
-    /// # Arguments
-    /// * `id` - The ID to assign to the LED panel
-    ///
-    /// # Returns
-    /// * `Ok(())` if initialization was successful
-    /// * `Err(Error)` if initialization failed
-    pub async fn init(&mut self, id: u8) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Initialize panel with ID: {id}");
-        let command = am03127::set_id(id);
-        self.write_unchecked(command).await?;
-        Ok(())
-    }
-
-    async fn write_unchecked(&mut self, data: String<COMMAND_STRING_SIZE>) -> Result<(), Error> {
-        log::debug!("{LOGGER_NAME}: Sending {data}");
-        self.uart.write_all(data.as_bytes()).await?;
-        Ok(())
-    }
-
     /// Writes data to the LED panel and processes the response
     ///
     /// # Arguments
