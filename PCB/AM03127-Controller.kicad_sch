@@ -5,6 +5,204 @@
 	(uuid "145d96f7-bd8e-4910-9a18-e63b5a2fc40f")
 	(paper "A4")
 	(lib_symbols
+		(symbol "DC_PowerJack:DC050-T"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "DC"
+				(at 0 7.62 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "DC050-T"
+				(at 0 -7.62 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "DC_PowerJack:DC-IN_DC050-T"
+				(at 0 -10.16 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC Part" "C431534"
+				(at 0 -12.7 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "DC050-T_0_1"
+				(polyline
+					(pts
+						(xy -9.4 3.56)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(polyline
+					(pts
+						(xy -5.08 -2.54) (xy -5.33 -1.52)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -5.08 -2.54) (xy -4.83 -1.52)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 3.56) (xy -9.4 3.56)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 3.56) (xy -2.54 1.52) (xy -9.4 1.52)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 0) (xy -5.08 0) (xy -5.08 -2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -2.54) (xy -7.87 -2.54) (xy -8.38 -1.52) (xy -8.89 -2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin unspecified line
+					(at 2.54 2.54 180)
+					(length 5.08)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at 2.54 0 180)
+					(length 5.08)
+					(name "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at 2.54 -2.54 180)
+					(length 5.08)
+					(name "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Interface_UART:MAX3232"
 			(pin_names
 				(offset 1.016)
@@ -2843,6 +3041,10 @@
 		(uuid "8f64e3a7-b202-4bd4-a9b9-4f9833c61e7a")
 	)
 	(no_connect
+		(at 146.05 125.73)
+		(uuid "a95e1a07-67ff-4ae9-94a4-193a4887535f")
+	)
+	(no_connect
 		(at 120.65 62.23)
 		(uuid "ab607618-e3fc-4b92-a263-56d2ac96d820")
 	)
@@ -2863,14 +3065,6 @@
 		(uuid "cd146467-17b3-4ee5-a393-f9036160f3ff")
 	)
 	(no_connect
-		(at 121.92 123.19)
-		(uuid "d3a7f771-362e-498c-9a5d-b5302b61e8cf")
-	)
-	(no_connect
-		(at 149.86 130.81)
-		(uuid "dc37bd9c-1aef-467f-9624-1fc12ec45af2")
-	)
-	(no_connect
 		(at 82.55 46.99)
 		(uuid "e7897684-fc8d-4102-8026-7e68d77e1b8c")
 	)
@@ -2883,6 +3077,26 @@
 			(type default)
 		)
 		(uuid "0b4c20db-e248-4b64-a861-580c2647e4b1")
+	)
+	(wire
+		(pts
+			(xy 146.05 133.35) (xy 146.05 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c8bf18a-9a3e-407f-9a7e-6c94c49abd14")
+	)
+	(wire
+		(pts
+			(xy 130.81 130.81) (xy 146.05 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0d28eaa7-8021-4761-8d2c-f1b8ff4720cc")
 	)
 	(wire
 		(pts
@@ -2913,16 +3127,6 @@
 			(type default)
 		)
 		(uuid "16247ab3-dc12-4644-96d4-af39f7faf27d")
-	)
-	(wire
-		(pts
-			(xy 149.86 133.35) (xy 149.86 143.51)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "203f6c5c-72f7-425f-8a37-bad827db377a")
 	)
 	(wire
 		(pts
@@ -3086,6 +3290,16 @@
 	)
 	(wire
 		(pts
+			(xy 121.92 128.27) (xy 146.05 128.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "788e54c4-231b-47c1-b9e1-a3ef2d31faf5")
+	)
+	(wire
+		(pts
 			(xy 121.92 105.41) (xy 134.62 105.41)
 		)
 		(stroke
@@ -3113,26 +3327,6 @@
 			(type default)
 		)
 		(uuid "8fe79d27-4e8a-46a1-895c-2d0ac2580ebd")
-	)
-	(wire
-		(pts
-			(xy 130.81 118.11) (xy 130.81 125.73)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9036a7f0-10ec-4ca2-94ca-c1c205936bb3")
-	)
-	(wire
-		(pts
-			(xy 121.92 128.27) (xy 149.86 128.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "944824d3-9fbd-42f3-b12e-edfbe081cbe4")
 	)
 	(wire
 		(pts
@@ -3226,16 +3420,6 @@
 	)
 	(wire
 		(pts
-			(xy 130.81 125.73) (xy 149.86 125.73)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "dbacf610-f264-4291-b44c-c489d555567d")
-	)
-	(wire
-		(pts
 			(xy 157.48 46.99) (xy 157.48 50.8)
 		)
 		(stroke
@@ -3243,6 +3427,16 @@
 			(type default)
 		)
 		(uuid "dbea7482-449f-4cdd-b214-41efc0d45e6d")
+	)
+	(wire
+		(pts
+			(xy 130.81 118.11) (xy 130.81 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ddd7a359-982b-4d23-9184-a5fc270f6fdd")
 	)
 	(wire
 		(pts
@@ -3305,7 +3499,7 @@
 		(uuid "0cba222b-0902-4b95-857c-636daea572eb")
 	)
 	(label "RS232 RX"
-		(at 134.62 128.27 0)
+		(at 133.35 128.27 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -3375,7 +3569,7 @@
 		(uuid "bde71bab-fd5c-43fd-aae3-2c0f9c19f301")
 	)
 	(label "RS232 TX"
-		(at 134.62 125.73 0)
+		(at 133.35 130.81 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -3406,8 +3600,7 @@
 	)
 	(symbol
 		(lib_id "RJ11:PCB-6P4C-90_C189746")
-		(at 157.48 128.27 270)
-		(mirror x)
+		(at 153.67 130.81 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3415,7 +3608,7 @@
 		(dnp no)
 		(uuid "06fbbee5-ec7c-46f0-91e5-c2d6598dc14f")
 		(property "Reference" "RJ11"
-			(at 166.37 130.8101 90)
+			(at 162.56 128.2699 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3424,7 +3617,7 @@
 			)
 		)
 		(property "Value" "PCB-6P4C-90_C189746"
-			(at 166.37 128.2701 90)
+			(at 162.56 130.8099 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3433,7 +3626,7 @@
 			)
 		)
 		(property "Footprint" "RJ11:RJ11-TH_PCB-6P4C-90_C189746"
-			(at 142.24 128.27 0)
+			(at 138.43 130.81 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3442,7 +3635,7 @@
 			)
 		)
 		(property "Datasheet" "https://lcsc.com/product-detail/Ethernet-Connectors-Modular-Connectors_Shenzhen-Cankemeng-PCB-6P4C-90degree-gray-Full-gold_C189746.html"
-			(at 139.7 128.27 0)
+			(at 135.89 130.81 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3451,7 +3644,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 157.48 128.27 0)
+			(at 153.67 130.81 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3460,7 +3653,7 @@
 			)
 		)
 		(property "LCSC Part" "C189746"
-			(at 137.16 128.27 0)
+			(at 133.35 130.81 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5283,6 +5476,88 @@
 		)
 	)
 	(symbol
+		(lib_id "DC_PowerJack:DC050-T")
+		(at 179.07 40.64 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c55a0582-d3c7-4741-92e5-b55a0f1bd9e7")
+		(property "Reference" "DC1"
+			(at 189.23 41.4001 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "DC050-T"
+			(at 189.23 38.8601 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "DC_PowerJack:DC-IN_DC050-T"
+			(at 179.07 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 179.07 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 179.07 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part" "C431534"
+			(at 179.07 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "40af6ada-c8f3-454d-9769-b7de97e8cfdf")
+		)
+		(pin "1"
+			(uuid "3275229c-f879-405f-b564-ecae115334e4")
+		)
+		(pin "3"
+			(uuid "441234ee-e2e4-4b1a-a7fe-cad6b31fee67")
+		)
+		(instances
+			(project ""
+				(path "/145d96f7-bd8e-4910-9a18-e63b5a2fc40f"
+					(reference "DC1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "PCM_JLCPCB-Capacitors:1206,10uF")
 		(at 167.64 46.99 0)
 		(unit 1)
@@ -6031,7 +6306,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 149.86 143.51 0)
+		(at 146.05 139.7 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -6040,7 +6315,7 @@
 		(fields_autoplaced yes)
 		(uuid "ff3ed2c3-1e98-4973-bf34-27d6f156514d")
 		(property "Reference" "#PWR06"
-			(at 149.86 149.86 0)
+			(at 146.05 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6049,7 +6324,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 149.86 148.59 0)
+			(at 146.05 144.78 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6057,7 +6332,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 143.51 0)
+			(at 146.05 139.7 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6066,7 +6341,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 143.51 0)
+			(at 146.05 139.7 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6075,7 +6350,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 149.86 143.51 0)
+			(at 146.05 139.7 0)
 			(effects
 				(font
 					(size 1.27 1.27)
