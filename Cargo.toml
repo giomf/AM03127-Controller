@@ -41,7 +41,7 @@ esp-wifi = { version = "0.15.0", features = [
 ] }
 heapless = { version = "0.7.0", default-features = false }
 log = { version = "0.4.27" }
-picoserve = { version = "0.15.1", features = ["embassy", "log"] }
+picoserve = { version = "0.16.0", features = ["embassy", "log"] }
 postcard = "1.1.1"
 sequential-storage = "4.0.1"
 serde = { version = "1.0.219", features = ["derive"], default-features = false }
