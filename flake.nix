@@ -27,6 +27,7 @@
           pkgs.espflash
           pkgs.jre21_minimal
           pkgs.cargo-sort
+          pkgs.cargo-edit
         ];
       };
     };
