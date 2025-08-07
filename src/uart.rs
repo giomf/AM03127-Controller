@@ -1,12 +1,8 @@
-use crate::{
-    am03127::{self, COMMAND_STRING_SIZE},
-    error::Error,
-};
+use crate::{am03127::COMMAND_STRING_SIZE, error::Error};
 use embedded_io_async::Write;
 use esp_hal::{
     Async,
     gpio::interconnect::{PeripheralInput, PeripheralOutput},
-    peripheral::Peripheral,
     peripherals::UART1,
     uart::{Config, DataBits, Parity, Uart as UartDriver},
 };
@@ -39,9 +35,9 @@ impl<'a> Uart<'a> {
     /// # Returns
     /// * A new Uart instance configured for communication with the LED panel
     pub fn new(
-        uart: UART1,
-        tx: impl Peripheral<P = impl PeripheralOutput> + 'a,
-        rx: impl Peripheral<P = impl PeripheralInput> + 'a,
+        uart: UART1<'a>,
+        tx: impl PeripheralOutput<'a>,
+        rx: impl PeripheralInput<'a>,
     ) -> Self {
         let config = Config::default()
             .with_baudrate(BAUD_RATE)

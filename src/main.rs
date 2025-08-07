@@ -15,11 +15,10 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_hal::peripheral::Peripheral;
-use esp_hal::peripherals::{RADIO_CLK, WIFI};
+use esp_bootloader_esp_idf::esp_app_desc;
+use esp_hal::peripherals::WIFI;
 use esp_hal::timer::{systimer::SystemTimer, timg::TimerGroupInstance};
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_wifi::EspWifiRngSource;
 use esp_wifi::{
     EspWifiController, init,
     wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
@@ -35,6 +34,8 @@ const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
 
+esp_app_desc!();
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
@@ -44,12 +45,8 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(size: 72 * 1024);
 
     let rng = Rng::new(peripherals.RNG);
-    let (wifi_controller, wifi_interface) = init_wifi(
-        peripherals.TIMG0,
-        peripherals.RADIO_CLK,
-        peripherals.WIFI,
-        rng.clone(),
-    );
+    let (wifi_controller, wifi_interface) =
+        init_wifi(peripherals.TIMG0, peripherals.WIFI, rng.clone());
     let systimer = SystemTimer::new(peripherals.SYSTIMER);
     esp_hal_embassy::init(systimer.alarm0);
 
@@ -95,16 +92,13 @@ async fn main(spawner: Spawner) {
 }
 
 fn init_wifi(
-    timer_group: impl TimerGroupInstance,
-    radio_clk: impl Peripheral<P = RADIO_CLK> + 'static,
-    wifi: impl Peripheral<P = WIFI> + 'static,
-    rng: impl Peripheral<P = impl EspWifiRngSource> + 'static,
+    timer_group: impl TimerGroupInstance + 'static,
+    wifi: WIFI<'static>,
+    rng: Rng,
 ) -> (WifiController<'static>, WifiDevice<'static>) {
     let timg0 = TimerGroup::new(timer_group);
-    let esp_wifi_ctrl = &*make_static!(
-        EspWifiController<'static>,
-        init(timg0.timer0, rng, radio_clk).unwrap()
-    );
+    let esp_wifi_ctrl =
+        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
 
     let (wifi_controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, wifi).unwrap();
     let wifi_interface = interfaces.sta;
