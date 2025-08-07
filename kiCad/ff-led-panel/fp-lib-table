@@ -1,4 +1,6 @@
 (fp_lib_table
   (version 7)
-  (lib (name "ff-led-panel")(type "KiCad")(uri "/home/guif/repos/esp-no-std/kiCad/ff-led-panel")(options "")(descr ""))
+  (lib (name "esp32")(type "KiCad")(uri "${KIPRJMOD}/libs/esp32")(options "")(descr ""))
+  (lib (name "RJ11")(type "KiCad")(uri "${KIPRJMOD}/libs/RJ11.pretty")(options "")(descr ""))
+  (lib (name "DC_PowerJack")(type "KiCad")(uri "${KIPRJMOD}/libs/DC_PowerJack.pretty")(options "")(descr ""))
 )

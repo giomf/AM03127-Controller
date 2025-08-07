@@ -1,0 +1,23 @@
+%TF.GenerationSoftware,KiCad,Pcbnew,9.0.2*%
+%TF.CreationDate,2025-07-31T19:10:48+02:00*%
+%TF.ProjectId,ff-led-panel,66662d6c-6564-42d7-9061-6e656c2e6b69,rev?*%
+%TF.SameCoordinates,Original*%
+%TF.FileFunction,Profile,NP*%
+%FSLAX46Y46*%
+G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+G04 Created by KiCad (PCBNEW 9.0.2) date 2025-07-31 19:10:48*
+%MOMM*%
+%LPD*%
+G01*
+G04 APERTURE LIST*
+%TA.AperFunction,Profile*%
+%ADD10C,0.050000*%
+%TD*%
+G04 APERTURE END LIST*
+D10*
+X124000000Y-68000000D02*
+X147000000Y-68000000D01*
+X147000000Y-143955000D01*
+X124000000Y-143955000D01*
+X124000000Y-68000000D01*
+M02*
