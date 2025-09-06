@@ -28,6 +28,8 @@ use picoserve::{AppRouter, AppWithStateBuilder, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
 use uart::Uart;
 
+use crate::am03127::page_content::Page;
+
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
 
@@ -74,12 +76,13 @@ async fn main(spawner: Spawner) {
         .keep_connection_alive()
     );
 
-    let uart = Uart::new(peripherals.UART1, peripherals.GPIO2, peripherals.GPIO3);
+    let uart = Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2);
     let shared_panel = SharedPanel(make_static!(
         Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
     ));
     let mut panel = shared_panel.0.lock().await;
     panel.init().await.expect("Failed to initialze panel");
+    panel.delete_all().await.unwrap();
 
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
