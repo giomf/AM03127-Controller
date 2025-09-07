@@ -498,15 +498,23 @@
     "netclass_patterns": [
       {
         "netclass": "Power",
-        "pattern": "*V"
-      },
-      {
-        "netclass": "Power",
         "pattern": "/Buck*"
       },
       {
         "netclass": "Power",
         "pattern": "+3.3V"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "+12V"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "+5V"
       }
     ]
   },
