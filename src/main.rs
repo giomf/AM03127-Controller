@@ -16,19 +16,18 @@ use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::esp_app_desc;
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::peripherals::WIFI;
-use esp_hal::timer::{systimer::SystemTimer, timg::TimerGroupInstance};
+use esp_hal::ram;
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
-use esp_wifi::{
-    EspWifiController, init,
-    wifi::{ClientConfiguration, Configuration, WifiController, WifiDevice, WifiEvent, WifiState},
+use esp_radio::{
+    Controller, init,
+    wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
 };
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
 use uart::Uart;
-
-use crate::am03127::page_content::Page;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
@@ -38,24 +37,30 @@ const PASSWORD: &str = env!("WIFI_PASS");
 
 esp_app_desc!();
 
-#[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(size: 72 * 1024);
+    esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
+    esp_alloc::heap_allocator!(size: 36 * 1024);
 
-    let rng = Rng::new(peripherals.RNG);
-    let (wifi_controller, wifi_interface) =
-        init_wifi(peripherals.TIMG0, peripherals.WIFI, rng.clone());
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
+    let timg0 = TimerGroup::new(peripherals.TIMG0);
 
-    let (network_stack, network_runner) = init_network(rng, wifi_interface);
+    #[cfg(target_arch = "riscv32")]
+    let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+    esp_rtos::start(
+        timg0.timer0,
+        #[cfg(target_arch = "riscv32")]
+        sw_int.software_interrupt0,
+    );
 
-    spawner.spawn(network_task(network_runner)).ok();
+    let (wifi_controller, wifi_interface) = init_wifi(peripherals.WIFI);
+    let (network_stack, network_runner) = init_network(wifi_interface);
+
     spawner.spawn(wifi_task(wifi_controller)).ok();
+    spawner.spawn(network_task(network_runner)).ok();
 
     network_stack.wait_link_up().await;
     network_stack.wait_config_up().await;
@@ -64,6 +69,7 @@ async fn main(spawner: Spawner) {
         Some(config) => log::info!("Network: DHCP IP {}", config.address),
         None => log::error!("Network: Failed to receive DHCP IP address"),
     }
+
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
     let config = make_static!(
         picoserve::Config<Duration>,
@@ -82,7 +88,6 @@ async fn main(spawner: Spawner) {
     ));
     let mut panel = shared_panel.0.lock().await;
     panel.init().await.expect("Failed to initialze panel");
-    panel.delete_all().await.unwrap();
 
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
@@ -95,31 +100,25 @@ async fn main(spawner: Spawner) {
     }
 }
 
-fn init_wifi(
-    timer_group: impl TimerGroupInstance + 'static,
-    wifi: WIFI<'static>,
-    rng: Rng,
-) -> (WifiController<'static>, WifiDevice<'static>) {
-    let timg0 = TimerGroup::new(timer_group);
-    let esp_wifi_ctrl =
-        &*make_static!(EspWifiController<'static>, init(timg0.timer0, rng).unwrap());
+fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, WifiDevice<'static>) {
+    let esp_radio_ctrl = &*make_static!(Controller<'static>, init().unwrap());
+    let (controller, interfaces) =
+        esp_radio::wifi::new(&esp_radio_ctrl, wifi, Default::default()).unwrap();
+    let device = interfaces.sta;
 
-    let (wifi_controller, interfaces) = esp_wifi::wifi::new(&esp_wifi_ctrl, wifi).unwrap();
-    let wifi_interface = interfaces.sta;
-
-    return (wifi_controller, wifi_interface);
+    return (controller, device);
 }
 
 fn init_network(
-    mut rng: Rng,
-    wifi_interface: WifiDevice<'static>,
+    wifi_device: WifiDevice<'static>,
 ) -> (Stack<'static>, Runner<'static, WifiDevice<'static>>) {
+    let rng = Rng::new();
     let config = embassy_net::Config::dhcpv4(Default::default());
     let seed = (rng.random() as u64) << 32 | rng.random() as u64;
 
     // Init network stack
     embassy_net::new(
-        wifi_interface,
+        wifi_device,
         config,
         make_static!(StackResources<STACK_RESSOURCE_SIZE>, StackResources::new()),
         seed,
@@ -132,8 +131,8 @@ async fn wifi_task(mut wifi_controller: WifiController<'static>) {
     log::info!("{LOGGER_NAME}: Start wifi connection task");
 
     loop {
-        match esp_wifi::wifi::wifi_state() {
-            WifiState::StaConnected => {
+        match esp_radio::wifi::sta_state() {
+            WifiStaState::Connected => {
                 // wait until we're no longer connected
                 wifi_controller
                     .wait_for_event(WifiEvent::StaDisconnected)
@@ -143,12 +142,12 @@ async fn wifi_task(mut wifi_controller: WifiController<'static>) {
             _ => {}
         }
         if !matches!(wifi_controller.is_started(), Ok(true)) {
-            let client_config = Configuration::Client(ClientConfiguration {
-                ssid: SSID.try_into().unwrap(),
-                password: PASSWORD.try_into().unwrap(),
-                ..Default::default()
-            });
-            wifi_controller.set_configuration(&client_config).unwrap();
+            let client_config = ModeConfig::Client(
+                ClientConfig::default()
+                    .with_ssid(SSID.try_into().unwrap())
+                    .with_password(PASSWORD.try_into().unwrap()),
+            );
+            wifi_controller.set_config(&client_config).unwrap();
             log::info!("{LOGGER_NAME}: Starting wifi");
             wifi_controller.start_async().await.unwrap();
             log::info!("{LOGGER_NAME}: Wifi started");

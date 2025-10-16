@@ -28,7 +28,7 @@
           pkgs.jre21_minimal
           pkgs.cargo-sort
           pkgs.cargo-edit
-          pkgs.python313Packages.easyeda2ato
+          pkgs.python313Packages.atopile-easyeda2kicad
         ];
       };
     };
