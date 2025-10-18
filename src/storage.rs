@@ -4,6 +4,7 @@ use crate::{
 };
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 use embassy_embedded_hal::adapter::BlockingAsync;
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use esp_storage::FlashStorage;
 use heapless::{FnvIndexMap, Vec};
 use sequential_storage::{
@@ -124,7 +125,7 @@ impl<'a> Value<'a> for Schedule {
 /// from a specific section of flash memory.
 pub struct NvsStorageSection<T, const S: usize> {
     /// Flash storage driver
-    flash: BlockingAsync<FlashStorage>,
+    flash_storage: &'static Mutex<CriticalSectionRawMutex, BlockingAsync<FlashStorage<'static>>>,
     /// Range of flash memory addresses for this section
     flash_range: Range<u32>,
     /// Phantom data to track the type stored in this section
@@ -140,13 +141,20 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     ///
     /// # Returns
     /// * A new NvsStorageSection instance
-    pub fn new(flash_begin: u32, flash_size: u32) -> Self {
-        let flash = BlockingAsync::new(FlashStorage::new());
+
+    pub fn new(
+        flash_storage: &'static Mutex<
+            CriticalSectionRawMutex,
+            BlockingAsync<FlashStorage<'static>>,
+        >,
+        flash_begin: u32,
+        flash_size: u32,
+    ) -> Self {
         let flash_end = flash_begin + flash_size;
         let flash_range = flash_begin..flash_end;
 
         NvsStorageSection {
-            flash,
+            flash_storage,
             flash_range,
             _type: PhantomData,
         }
@@ -165,9 +173,9 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
         log::info!("{LOGGER_NAME}: Reading \"{key}\"");
 
         let mut data_buffer = [0; S];
-
+        let mut test = &*self.flash_storage.lock().await;
         let page = map::fetch_item::<u8, T, _>(
-            &mut self.flash,
+            &mut test,
             self.flash_range.clone(),
             &mut NoCache::new(),
             &mut data_buffer,

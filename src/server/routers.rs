@@ -4,8 +4,9 @@ use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::error::Error;
 use crate::panel::{Pages, Schedules};
+use crate::server::ota::OverTheAirUpdate;
 use picoserve::extract::Json;
-use picoserve::routing::{get_service, parse_path_segment, post};
+use picoserve::routing::{get_service, parse_path_segment, post, put_service};
 use picoserve::{
     extract::State,
     routing::{PathRouter, get},
@@ -250,6 +251,10 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
             },
         ),
     )
+}
+
+pub fn ota_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+    picoserve::Router::new().route("", put_service(OverTheAirUpdate))
 }
 
 pub fn delete_all_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {

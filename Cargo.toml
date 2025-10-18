@@ -35,8 +35,9 @@ esp-radio = { version = "0.16.0", features = [
   "unstable",
   "wifi",
 ] }
+
 esp-rtos = { version = "0.1.1", features = ["esp32c3", "embassy", "esp-radio"] }
-esp-storage = { version = "0.5.0", features = ["esp32c3", "nor-flash"] }
+esp-storage = { version = "0.8.0", features = ["esp32c3"] }
 heapless = { version = "0.7.17", default-features = false }
 log = { version = "0.4.28" }
 picoserve = { version = "0.16.0", features = ["embassy", "log"] }
@@ -57,6 +58,10 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
   "socket-icmp",
 ] }
 static_cell = { version = "2.1.1", features = ["nightly"] }
+
+[patch.crates-io]
+# esp-hal = { git = "https://github.com/esp-rs/esp-hal", rev = "cf856ff5b43a146718056844ed4e3d8109be0b88" }
+# esp-bootloader-esp-idf = { git = "https://github.com/esp-rs/esp-hal", rev = "cf856ff5b43a146718056844ed4e3d8109be0b88" }
 
 [profile.dev]
 # Rust debug is too slow.

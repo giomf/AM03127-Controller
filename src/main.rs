@@ -9,6 +9,7 @@ mod server;
 mod storage;
 mod uart;
 
+use embassy_embedded_hal::adapter::BlockingAsync;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -24,6 +25,7 @@ use esp_radio::{
     Controller, init,
     wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
 };
+use esp_storage::FlashStorage;
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
@@ -58,6 +60,12 @@ async fn main(spawner: Spawner) {
 
     let (wifi_controller, wifi_interface) = init_wifi(peripherals.WIFI);
     let (network_stack, network_runner) = init_network(wifi_interface);
+    let flash_storage = make_static!(
+        Mutex < CriticalSectionRawMutex,
+        BlockingAsync<FlashStorage>>,
+        Mutex::new(
+        BlockingAsync::new(FlashStorage::new(peripherals.FLASH)))
+    );
 
     spawner.spawn(wifi_task(wifi_controller)).ok();
     spawner.spawn(network_task(network_runner)).ok();
@@ -86,8 +94,8 @@ async fn main(spawner: Spawner) {
     let shared_panel = SharedPanel(make_static!(
         Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
     ));
-    let mut panel = shared_panel.0.lock().await;
-    panel.init().await.expect("Failed to initialze panel");
+    // let mut panel = shared_panel.0.lock().await;
+    // panel.init().await.expect("Failed to initialze panel");
 
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(

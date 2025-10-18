@@ -1,4 +1,5 @@
 mod layers;
+mod ota;
 mod routers;
 
 use crate::panel::Panel;
@@ -60,6 +61,7 @@ impl AppWithStateBuilder for AppProps {
             .nest("/schedules", routers::schedules_router())
             .nest("/clock", routers::clock_router())
             .nest("/reset", routers::delete_all_router())
+            .nest("/ota", routers::ota_router())
             .layer(PreHandlerLogLayer)
     }
 }
