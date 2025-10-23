@@ -12,7 +12,7 @@ mod uart;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer, with_timeout};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::esp_app_desc;
@@ -25,7 +25,7 @@ use esp_radio::{
     wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
 };
 use panel::Panel;
-use picoserve::{AppRouter, AppWithStateBuilder, make_static};
+use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, make_static};
 use server::{AppProps, AppState, SharedPanel, web_task};
 use uart::Uart;
 
@@ -47,6 +47,10 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(size: 36 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
+    let uart = Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2);
+    let shared_panel = SharedPanel(make_static!(
+        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
+    ));
 
     #[cfg(target_arch = "riscv32")]
     let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -58,37 +62,17 @@ async fn main(spawner: Spawner) {
 
     let (wifi_controller, wifi_interface) = init_wifi(peripherals.WIFI);
     let (network_stack, network_runner) = init_network(wifi_interface);
+    let (server_app, server_config) = init_server();
 
-    spawner
-        .spawn(wifi_task(wifi_controller, network_stack))
-        .unwrap();
-    spawner.spawn(network_task(network_runner)).ok();
-
-    let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
-    let config = make_static!(
-        picoserve::Config<Duration>,
-        picoserve::Config::new(picoserve::Timeouts {
-            persistent_start_read_request: Some(Duration::from_secs(5)),
-            start_read_request: Some(Duration::from_secs(5)),
-            read_request: Some(Duration::from_secs(2)),
-            write: Some(Duration::from_secs(2)),
-        })
-        .keep_connection_alive()
-    );
-
-    let uart = Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2);
-    let shared_panel = SharedPanel(make_static!(
-        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
-    ));
-    let mut panel = shared_panel.0.lock().await;
-    panel.init().await.expect("Failed to initialze panel");
-
+    spawner.must_spawn(wifi_task(wifi_controller, network_stack));
+    spawner.must_spawn(network_task(network_runner));
+    spawner.must_spawn(panel_init_task(shared_panel));
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
             id,
             network_stack,
-            app,
-            config,
+            server_app,
+            server_config,
             AppState { shared_panel },
         ));
     }
@@ -117,6 +101,25 @@ fn init_network(
         make_static!(StackResources<STACK_RESSOURCE_SIZE>, StackResources::new()),
         seed,
     )
+}
+
+fn init_server() -> (
+    &'static mut Router<<AppProps as AppWithStateBuilder>::PathRouter, AppState>,
+    &'static mut ServerConfig<Duration>,
+) {
+    let server_app = make_static!(AppRouter<AppProps>, AppProps.build_app());
+    let server_config = make_static!(
+        ServerConfig<Duration>,
+        ServerConfig::new(picoserve::Timeouts {
+            persistent_start_read_request: Some(Duration::from_secs(5)),
+            start_read_request: Some(Duration::from_secs(5)),
+            read_request: Some(Duration::from_secs(2)),
+            write: Some(Duration::from_secs(2)),
+        })
+        .keep_connection_alive()
+    );
+
+    (server_app, server_config)
 }
 
 #[embassy_executor::task]
@@ -171,8 +174,17 @@ async fn wifi_task(
 }
 
 #[embassy_executor::task]
-async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) {
+async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) -> ! {
     const LOGGER_NAME: &str = "Network";
     log::info!("{LOGGER_NAME}: Start network task");
     runner.run().await
+}
+
+#[embassy_executor::task]
+async fn panel_init_task(shared_panel: SharedPanel) {
+    let mut panel = shared_panel.0.lock().await;
+    match panel.init().await {
+        Ok(_) => log::info!("Panel initialized"),
+        Err(err) => log::error!("Failed to initialize panel. {err}"),
+    }
 }

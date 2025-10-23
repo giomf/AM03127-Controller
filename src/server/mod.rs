@@ -122,6 +122,7 @@ pub async fn web_task(
     config: &'static picoserve::Config<Duration>,
     state: AppState,
 ) -> ! {
+    log::info!("Server: Starting webserver listener {id}");
     let port = 80;
     let mut tcp_rx_buffer = [0; 1024];
     let mut tcp_tx_buffer = [0; 1024];
