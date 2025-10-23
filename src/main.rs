@@ -10,7 +10,7 @@ mod storage;
 mod uart;
 
 use embassy_executor::Spawner;
-use embassy_net::{Runner, Stack, StackResources};
+use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
@@ -59,16 +59,10 @@ async fn main(spawner: Spawner) {
     let (wifi_controller, wifi_interface) = init_wifi(peripherals.WIFI);
     let (network_stack, network_runner) = init_network(wifi_interface);
 
-    spawner.spawn(wifi_task(wifi_controller)).ok();
+    spawner
+        .spawn(wifi_task(wifi_controller, network_stack))
+        .unwrap();
     spawner.spawn(network_task(network_runner)).ok();
-
-    network_stack.wait_link_up().await;
-    network_stack.wait_config_up().await;
-
-    match network_stack.config_v4() {
-        Some(config) => log::info!("Network: DHCP IP {}", config.address),
-        None => log::error!("Network: Failed to receive DHCP IP address"),
-    }
 
     let app = make_static!(AppRouter<AppProps>, AppProps.build_app());
     let config = make_static!(
@@ -111,7 +105,7 @@ fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, WifiDevice<'stati
 
 fn init_network(
     wifi_device: WifiDevice<'static>,
-) -> (Stack<'static>, Runner<'static, WifiDevice<'static>>) {
+) -> (NetworkStack<'static>, Runner<'static, WifiDevice<'static>>) {
     let rng = Rng::new();
     let config = embassy_net::Config::dhcpv4(Default::default());
     let seed = (rng.random() as u64) << 32 | rng.random() as u64;
@@ -126,20 +120,21 @@ fn init_network(
 }
 
 #[embassy_executor::task]
-async fn wifi_task(mut wifi_controller: WifiController<'static>) {
+async fn wifi_task(
+    mut wifi_controller: WifiController<'static>,
+    network_stack: NetworkStack<'static>,
+) {
     const LOGGER_NAME: &str = "WIFI";
     log::info!("{LOGGER_NAME}: Start wifi connection task");
 
     loop {
-        match esp_radio::wifi::sta_state() {
-            WifiStaState::Connected => {
-                // wait until we're no longer connected
-                wifi_controller
-                    .wait_for_event(WifiEvent::StaDisconnected)
-                    .await;
-                Timer::after(Duration::from_millis(5000)).await
-            }
-            _ => {}
+        if matches!(esp_radio::wifi::sta_state(), WifiStaState::Connected) {
+            // wait until we're no longer connected
+            wifi_controller
+                .wait_for_event(WifiEvent::StaDisconnected)
+                .await;
+            log::info!("{LOGGER_NAME}: Wifi disconnected");
+            Timer::after(Duration::from_millis(5000)).await
         }
         if !matches!(wifi_controller.is_started(), Ok(true)) {
             let client_config = ModeConfig::Client(
@@ -152,10 +147,21 @@ async fn wifi_task(mut wifi_controller: WifiController<'static>) {
             wifi_controller.start_async().await.unwrap();
             log::info!("{LOGGER_NAME}: Wifi started");
         }
-        log::info!("{LOGGER_NAME}: About to connect to wifi...");
-
+        log::info!("{LOGGER_NAME}: Connect to wifi");
         match wifi_controller.connect_async().await {
-            Ok(_) => log::info!("{LOGGER_NAME}: Wifi connected!"),
+            Ok(_) => {
+                log::info!("{LOGGER_NAME}: Wifi connected");
+                network_stack.wait_link_up().await;
+                log::info!("{LOGGER_NAME}: Getting DHCP IP address");
+                network_stack.wait_config_up().await;
+
+                match network_stack.config_v4() {
+                    Some(config) => {
+                        log::info!("{LOGGER_NAME}: Received DHCP IP address {}", config.address)
+                    }
+                    None => log::error!("{LOGGER_NAME}: Failed to receive DHCP IP address"),
+                }
+            }
             Err(e) => {
                 log::info!("{LOGGER_NAME}: Failed to connect to wifi: {:?}", e);
                 Timer::after(Duration::from_millis(5000)).await
