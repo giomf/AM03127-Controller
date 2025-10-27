@@ -87,7 +87,7 @@ impl From<esp_hal::uart::IoError> for Error {
 impl From<esp_hal::uart::RxError> for Error {
     fn from(value: esp_hal::uart::RxError) -> Self {
         let mut message = String::new();
-        write!(message, "{value}").expect("Failed to write message");
+        write!(message, "{value}").expect("Failed to read message");
         Self::Uart(message)
     }
 }

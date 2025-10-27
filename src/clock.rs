@@ -60,25 +60,25 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, shared_panel: Sha
     let sntp_address = SocketAddr::from((SNTP_ADDRESS, SNTP_PORT));
 
     loop {
-        if network_stack.is_config_up() {
-            match get_time(sntp_address, &socket, context).await {
-                Ok(result) => {
-                    let timestamp = result.sec();
-                    let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
-                    let mut panel = shared_panel.0.lock().await;
-                    match panel.set_clock(datetime.into()).await {
-                        Ok(_) => {
-                            log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")
-                        }
-                        Err(e) => log::error!(
-                            "{LOGGER_NAME}: Failed to send current date to panel {:?}",
-                            e
-                        ),
+        network_stack.wait_config_up().await;
+        log::info!("{LOGGER_NAME}: Getting current date");
+        match get_time(sntp_address, &socket, context).await {
+            Ok(result) => {
+                log::info!("{LOGGER_NAME}: Setting curernt date to panel");
+                let timestamp = result.sec();
+                let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
+                let mut panel = shared_panel.0.lock().await;
+                match panel.set_clock(datetime.into()).await {
+                    Ok(_) => {
+                        log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")
+                    }
+                    Err(e) => {
+                        log::error!("{LOGGER_NAME}: Failed to send current date to panel. {e}")
                     }
                 }
-                Err(e) => log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e),
-            };
-        }
+            }
+            Err(e) => log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e),
+        };
         Timer::after(Duration::from_secs(UPDATE_INTERVAL_SECS)).await;
     }
 }

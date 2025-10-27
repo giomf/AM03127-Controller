@@ -13,7 +13,7 @@ mod uart;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
-use embassy_time::{Duration, Timer, with_timeout};
+use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::esp_app_desc;
@@ -44,8 +44,8 @@ esp_app_desc!();
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
-    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
-    let peripherals = esp_hal::init(config);
+    let esp_config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+    let peripherals = esp_hal::init(esp_config);
 
     esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     esp_alloc::heap_allocator!(size: 36 * 1024);
@@ -190,6 +190,6 @@ async fn panel_init_task(shared_panel: SharedPanel) {
     let mut panel = shared_panel.0.lock().await;
     match panel.init().await {
         Ok(_) => log::info!("Panel initialized"),
-        Err(err) => log::error!("Failed to initialize panel. {err}"),
+        Err(e) => log::error!("Failed to initialize panel. {e}"),
     }
 }

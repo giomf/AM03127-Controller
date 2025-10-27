@@ -1,4 +1,5 @@
 use crate::{am03127::COMMAND_STRING_SIZE, error::Error};
+use embassy_time::{Duration, with_timeout};
 use embedded_io_async::Write;
 use esp_hal::{
     Async,
@@ -14,6 +15,8 @@ const BAUD_RATE: u32 = 9600;
 const READ_BUFFER_SIZE: usize = 32;
 /// Logger name for UART-related log messages
 const LOGGER_NAME: &str = "UART";
+/// Uart timeout in seconds
+const UART_TIMEOUT_SECS: u64 = 5;
 
 /// UART communication interface for the LED panel
 ///
@@ -64,9 +67,16 @@ impl<'a> Uart<'a> {
     /// * `Err(Error)` if the write failed or the panel rejected the command
     pub async fn write(&mut self, data: String<COMMAND_STRING_SIZE>) -> Result<(), Error> {
         log::debug!("{LOGGER_NAME}: Sending {data}");
-        self.uart.write_all(data.as_bytes()).await?;
+
+        let timeout = Duration::from_secs(UART_TIMEOUT_SECS);
+        with_timeout(timeout, self.uart.write_all(data.as_bytes()))
+            .await
+            .map_err(|_| Error::Uart(String::from("Write timeout")))??;
+
         let mut buffer = [0u8; READ_BUFFER_SIZE];
-        let bytes_read = self.uart.read_async(&mut buffer).await?;
+        let bytes_read = with_timeout(timeout, self.uart.read_async(&mut buffer))
+            .await
+            .map_err(|_| Error::Uart(String::from("Read timeout")))??;
 
         log::debug!("{LOGGER_NAME}: Receiving {bytes_read} bytes");
         let response = core::str::from_utf8(&buffer[..bytes_read]).unwrap();
