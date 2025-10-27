@@ -56,7 +56,9 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
   "socket-udp",
   "socket-icmp",
 ] }
+sntpc = { version = "0.6.1", default-features = false, features = ["embassy-socket"] }
 static_cell = { version = "2.1.1", features = ["nightly"] }
+time = { version = "0.3.44", default-features = false }
 
 [profile.dev]
 # Rust debug is too slow.

@@ -3,6 +3,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #[deny(clippy::mem_forget)]
 mod am03127;
+mod clock;
 mod error;
 mod panel;
 mod server;
@@ -29,8 +30,11 @@ use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, 
 use server::{AppProps, AppState, SharedPanel, web_task};
 use uart::Uart;
 
+use crate::clock::timing_task;
+
 const WEB_TASK_POOL_SIZE: usize = 2;
-const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
+// Webtask poolsize + sntp socket + one extra
+const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1 + 1;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
@@ -67,6 +71,7 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(wifi_task(wifi_controller, network_stack));
     spawner.must_spawn(network_task(network_runner));
     spawner.must_spawn(panel_init_task(shared_panel));
+    spawner.must_spawn(timing_task(network_stack, shared_panel));
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
             id,

@@ -11,19 +11,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct DateTime {
     /// Year (0-99)
-    year: u8,
+    pub year: u8,
     /// Week of the year (1-52)
-    week: u8,
+    pub week: u8,
     /// Month (1-12)
-    month: u8,
+    pub month: u8,
     /// Day of the month (1-31)
-    day: u8,
+    pub day: u8,
     /// Hour (0-23)
-    hour: u8,
+    pub hour: u8,
     /// Minute (0-59)
-    minute: u8,
+    pub minute: u8,
     /// Second (0-59)
-    second: u8,
+    pub second: u8,
 }
 
 impl CommandAble for DateTime {}
