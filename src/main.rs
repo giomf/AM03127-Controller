@@ -52,9 +52,9 @@ async fn main(spawner: Spawner) {
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let uart = Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2);
-    let shared_panel = SharedPanel(make_static!(
+    let shared_panel = make_static!(
         Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
-    ));
+    );
 
     #[cfg(target_arch = "riscv32")]
     let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -187,7 +187,7 @@ async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) -> ! {
 
 #[embassy_executor::task]
 async fn panel_init_task(shared_panel: SharedPanel) {
-    let mut panel = shared_panel.0.lock().await;
+    let mut panel = shared_panel.lock().await;
     match panel.init().await {
         Ok(_) => log::info!("Panel initialized"),
         Err(e) => log::error!("Failed to initialize panel. {e}"),

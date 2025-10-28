@@ -67,7 +67,7 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, shared_panel: Sha
                 log::info!("{LOGGER_NAME}: Setting curernt date to panel");
                 let timestamp = result.sec();
                 let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
-                let mut panel = shared_panel.0.lock().await;
+                let mut panel = shared_panel.lock().await;
                 match panel.set_clock(datetime.into()).await {
                     Ok(_) => {
                         log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")

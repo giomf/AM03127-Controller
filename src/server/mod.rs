@@ -10,11 +10,7 @@ use picoserve::response::{ErrorWithStatusCode, Response, StatusCode};
 use picoserve::{AppRouter, AppWithStateBuilder, response::IntoResponse, routing::PathRouter};
 
 /// Shared reference to the Panel instance
-///
-/// This wrapper allows sharing the Panel instance between multiple tasks
-/// while ensuring thread-safe access through a mutex.
-#[derive(Clone, Copy)]
-pub struct SharedPanel(pub &'static Mutex<CriticalSectionRawMutex, Panel<'static>>);
+pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel<'static>>;
 
 /// Application state for the web server
 ///
