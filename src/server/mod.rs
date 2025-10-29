@@ -1,16 +1,17 @@
 mod layers;
+mod ota;
 mod routers;
 
+use crate::SharedStorage;
 use crate::panel::Panel;
 use crate::{WEB_TASK_POOL_SIZE, error::Error};
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use layers::PreHandlerLogLayer;
 use picoserve::response::{ErrorWithStatusCode, Response, StatusCode};
 use picoserve::{AppRouter, AppWithStateBuilder, response::IntoResponse, routing::PathRouter};
 
 /// Shared reference to the Panel instance
-pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel<'static>>;
+// pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel>;
 
 /// Application state for the web server
 ///
@@ -19,10 +20,12 @@ pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel<'static>>;
 #[derive(Clone)]
 pub struct AppState {
     /// Shared reference to the Panel instance
-    pub shared_panel: SharedPanel,
+    pub panel: &'static Panel,
+    /// Shared reference to the Panel instance
+    pub storage: SharedStorage,
 }
 
-impl picoserve::extract::FromRef<AppState> for SharedPanel {
+impl picoserve::extract::FromRef<AppState> for &Panel {
     /// Extracts a SharedPanel from an AppState
     ///
     /// # Arguments
@@ -31,7 +34,7 @@ impl picoserve::extract::FromRef<AppState> for SharedPanel {
     /// # Returns
     /// * The SharedPanel from the AppState
     fn from_ref(state: &AppState) -> Self {
-        state.shared_panel
+        state.panel
     }
 }
 
@@ -56,6 +59,7 @@ impl AppWithStateBuilder for AppProps {
             .nest("/schedules", routers::schedules_router())
             .nest("/clock", routers::clock_router())
             .nest("/reset", routers::delete_all_router())
+            .nest("/ota", routers::ota_router())
             .layer(PreHandlerLogLayer)
     }
 }

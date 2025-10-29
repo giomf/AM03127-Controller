@@ -25,9 +25,10 @@ use esp_radio::{
     Controller, init,
     wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
 };
+use esp_storage::FlashStorage;
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, make_static};
-use server::{AppProps, AppState, SharedPanel, web_task};
+use server::{AppProps, AppState, web_task};
 use uart::Uart;
 
 use crate::clock::timing_task;
@@ -38,6 +39,9 @@ const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1 + 1;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
+
+pub type SharedUart = &'static Mutex<CriticalSectionRawMutex, Uart<'static>>;
+pub type SharedStorage = &'static Mutex<CriticalSectionRawMutex, FlashStorage<'static>>;
 
 esp_app_desc!();
 
@@ -51,10 +55,11 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(size: 36 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let uart = Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2);
-    let shared_panel = make_static!(
-        Mutex<CriticalSectionRawMutex, Panel>, Mutex::new(Panel::new(uart))
+    let shared_uart = make_static!(
+        Mutex<CriticalSectionRawMutex, Uart>, Mutex::new(Uart::new(peripherals.UART1, peripherals.GPIO3, peripherals.GPIO2))
     );
+    let shared_storage = make_static!(Mutex<CriticalSectionRawMutex, FlashStorage>, Mutex::new(FlashStorage::new(peripherals.FLASH)));
+    let panel = make_static!(Panel, Panel::new(shared_uart, shared_storage));
 
     #[cfg(target_arch = "riscv32")]
     let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
@@ -70,15 +75,18 @@ async fn main(spawner: Spawner) {
 
     spawner.must_spawn(wifi_task(wifi_controller, network_stack));
     spawner.must_spawn(network_task(network_runner));
-    spawner.must_spawn(panel_init_task(shared_panel));
-    spawner.must_spawn(timing_task(network_stack, shared_panel));
+    spawner.must_spawn(panel_init_task(panel));
+    spawner.must_spawn(timing_task(network_stack, panel));
     for id in 0..WEB_TASK_POOL_SIZE {
         spawner.must_spawn(web_task(
             id,
             network_stack,
             server_app,
             server_config,
-            AppState { shared_panel },
+            AppState {
+                panel: panel,
+                storage: shared_storage,
+            },
         ));
     }
 }
@@ -186,8 +194,7 @@ async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) -> ! {
 }
 
 #[embassy_executor::task]
-async fn panel_init_task(shared_panel: SharedPanel) {
-    let mut panel = shared_panel.lock().await;
+async fn panel_init_task(panel: &'static Panel) {
     match panel.init().await {
         Ok(_) => log::info!("Panel initialized"),
         Err(e) => log::error!("Failed to initialize panel. {e}"),

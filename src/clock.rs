@@ -6,7 +6,8 @@ use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
 use time::OffsetDateTime;
 
 use crate::am03127::realtime_clock::DateTime;
-use crate::server::SharedPanel;
+use crate::panel::Panel;
+// use crate::server::SharedPanel;
 
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];
 const SNTP_PORT: u16 = 123;
@@ -42,7 +43,7 @@ impl From<OffsetDateTime> for DateTime {
 }
 
 #[embassy_executor::task]
-pub async fn timing_task(network_stack: NetworkStack<'static>, shared_panel: SharedPanel) {
+pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static Panel) {
     log::info!("{LOGGER_NAME}: Start clock task. Executing every {UPDATE_INTERVAL_SECS} seconds.");
     let mut rx_meta = [PacketMetadata::EMPTY; 16];
     let mut rx_buffer = [0; 4096];
@@ -67,7 +68,6 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, shared_panel: Sha
                 log::info!("{LOGGER_NAME}: Setting curernt date to panel");
                 let timestamp = result.sec();
                 let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
-                let mut panel = shared_panel.lock().await;
                 match panel.set_clock(datetime.into()).await {
                     Ok(_) => {
                         log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")

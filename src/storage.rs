@@ -1,10 +1,10 @@
 use crate::{
+    SharedStorage,
     am03127::{page_content::Page, schedule::Schedule},
     error::Error,
 };
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 use embassy_embedded_hal::adapter::BlockingAsync;
-use esp_storage::FlashStorage;
 use heapless::{FnvIndexMap, Vec};
 use sequential_storage::{
     cache::NoCache,
@@ -14,7 +14,6 @@ use sequential_storage::{
 
 /// Logger name for storage-related log messages
 const LOGGER_NAME: &str = "NvsStorage";
-
 /// Starting address for page storage in flash memory
 pub const PAGE_STORAGE_BEGIN: u32 = 0x9000;
 /// Size of the page storage area in flash memory
@@ -124,14 +123,16 @@ impl<'a> Value<'a> for Schedule {
 /// from a specific section of flash memory.
 pub struct NvsStorageSection<T, const S: usize> {
     /// Flash storage driver
-    flash: BlockingAsync<FlashStorage>,
+    flash: SharedStorage,
     /// Range of flash memory addresses for this section
     flash_range: Range<u32>,
     /// Phantom data to track the type stored in this section
     _type: PhantomData<T>,
 }
 
-impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSection<T, S> {
+impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
+    NvsStorageSection<Option<T>, S>
+{
     /// Creates a new storage section in flash memory
     ///
     /// # Arguments
@@ -140,13 +141,12 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     ///
     /// # Returns
     /// * A new NvsStorageSection instance
-    pub fn new(flash_begin: u32, flash_size: u32) -> Self {
-        let flash = BlockingAsync::new(FlashStorage::new());
+    pub fn new(flash_storage: SharedStorage, flash_begin: u32, flash_size: u32) -> Self {
         let flash_end = flash_begin + flash_size;
         let flash_range = flash_begin..flash_end;
 
         NvsStorageSection {
-            flash,
+            flash: flash_storage,
             flash_range,
             _type: PhantomData,
         }
@@ -161,13 +161,15 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     /// * `Ok(Some(T))` - The item if found
     /// * `Ok(None)` - If the item doesn't exist
     /// * `Err(Error)` - If reading failed
-    pub async fn read(&mut self, key: char) -> Result<Option<T>, Error> {
+    pub async fn read(&self, key: char) -> Result<Option<T>, Error> {
         log::info!("{LOGGER_NAME}: Reading \"{key}\"");
 
         let mut data_buffer = [0; S];
+        let flash = &mut *self.flash.lock().await;
+        let mut flash = BlockingAsync::new(flash);
 
-        let page = map::fetch_item::<u8, T, _>(
-            &mut self.flash,
+        let page = map::fetch_item::<u8, Option<T>, _>(
+            &mut flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
             &mut data_buffer,
@@ -175,8 +177,13 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
         )
         .await?;
 
-        log::debug!("{LOGGER_NAME}: read {:?}", page);
-        Ok(page)
+        match page {
+            Some(page) => {
+                log::debug!("{LOGGER_NAME}: read {:?}", page);
+                Ok(page)
+            }
+            None => Ok(None),
+        }
     }
 
     /// Reads all items from storage
@@ -187,27 +194,33 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     /// # Returns
     /// * `Ok(Vec<T, N>)` - Vector of all items
     /// * `Err(Error)` - If reading failed
-    pub async fn read_all<const N: usize>(&mut self) -> Result<Vec<T, N>, Error> {
+    pub async fn read_all<const N: usize>(&self) -> Result<Vec<T, N>, Error> {
         log::info!("{LOGGER_NAME}: Reading all");
 
         let mut cache = NoCache::new();
         let mut data_buffer = [0; S];
 
         let mut values = FnvIndexMap::<_, _, N>::new();
-        // let mut values = Vec::<T, N>::new();
+        let flash = &mut *self.flash.lock().await;
+        let mut flash = BlockingAsync::new(flash);
 
         let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
-            &mut self.flash,
+            &mut flash,
             self.flash_range.clone(),
             &mut cache,
             &mut data_buffer,
         )
         .await?;
 
-        while let Some((_, value)) = pages_iterator.next::<u8, T>(&mut data_buffer).await? {
-            values
-                .insert(value.get_id(), value)
-                .map_err(|_| Error::Internal("Failed set active value".into()))?;
+        while let Some((_, value)) = pages_iterator
+            .next::<u8, Option<T>>(&mut data_buffer)
+            .await?
+        {
+            if let Some(valid_value) = value {
+                values
+                    .insert(valid_value.get_id(), valid_value)
+                    .map_err(|_| Error::Internal("Failed set valid value".into()))?;
+            }
         }
         let values = values.values().cloned().collect();
         Ok(values)
@@ -222,17 +235,20 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     /// # Returns
     /// * `Ok(())` - If writing was successful
     /// * `Err(Error)` - If writing failed
-    pub async fn write(&mut self, key: char, value: T) -> Result<(), Error> {
+    pub async fn write(&self, key: char, value: T) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Writing \"{key}\"");
 
         let mut data_buffer = [0; S];
+        let flash = &mut *self.flash.lock().await;
+        let mut flash = BlockingAsync::new(flash);
+
         map::store_item(
-            &mut self.flash,
+            &mut flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
             &mut data_buffer,
             &(key as u8),
-            &value,
+            &Some(value),
         )
         .await?;
 
@@ -247,27 +263,33 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize> NvsStorageSe
     /// # Returns
     /// * `Ok(())` - If deletion was successful
     /// * `Err(Error)` - If deletion failed
-    pub async fn delete(&mut self, key: char) -> Result<(), Error> {
+    pub async fn delete(&self, key: char) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting \"{key}\"");
 
         let mut data_buffer = [0; S];
+        let flash = &mut *self.flash.lock().await;
+        let mut flash = BlockingAsync::new(flash);
 
-        map::remove_item(
-            &mut self.flash,
+        map::store_item::<_, Option<T>, _>(
+            &mut flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
             &mut data_buffer,
             &(key as u8),
+            &None,
         )
         .await?;
 
         Ok(())
     }
 
-    pub async fn delete_all(&mut self) -> Result<(), Error> {
+    pub async fn delete_all(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting all");
         // Todo consider using remove_all_items
-        erase_all(&mut self.flash, self.flash_range.clone()).await?;
+        let flash = &mut *self.flash.lock().await;
+        let mut flash = BlockingAsync::new(flash);
+
+        erase_all(&mut flash, self.flash_range.clone()).await?;
         Ok(())
     }
 }

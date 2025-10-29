@@ -1,11 +1,12 @@
-use super::{AppState, SharedPanel};
+use super::AppState;
 use crate::am03127::page_content::Page;
 use crate::am03127::realtime_clock::DateTime;
 use crate::am03127::schedule::Schedule;
 use crate::error::Error;
-use crate::panel::{Pages, Schedules};
+use crate::panel::{Pages, Panel, Schedules};
+use crate::server::ota::OverTheAirUpdate;
 use picoserve::extract::Json;
-use picoserve::routing::{get_service, parse_path_segment, post};
+use picoserve::routing::{get_service, parse_path_segment, post, put_service};
 use picoserve::{
     extract::State,
     routing::{PathRouter, get},
@@ -35,11 +36,10 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
     picoserve::Router::new().route(
         "",
         post(
-            |State(shared_panel): State<SharedPanel>,
+            |State(panel): State<&'static Panel>,
              Json::<DateTime, JSON_DESERIALIZE_BUFFER_SIZE>(date_time)| async move {
                 log::info!("{LOGGER_NAME}: Set clock");
 
-                let mut panel = shared_panel.lock().await;
                 match panel.set_clock(date_time).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
@@ -60,13 +60,12 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         ("", parse_path_segment::<char>()),
         get(
-            |page_id: char, State(shared_panel): State<SharedPanel>| async move {
+            |page_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
                 if !is_page_id_valid(page_id) {
                     return Err(Error::BadRequest("Page ID not valid".into()));
                 }
 
-                let mut panel = shared_panel.lock().await;
                 match panel.get_page(page_id).await {
                     Ok(Some(page)) => Ok(Json(page)),
                     Ok(None) => Err(Error::NotFound("Page not found".into())),
@@ -79,7 +78,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         )
         .post(
             |page_id: char,
-             State(shared_panel): State<SharedPanel>,
+             State(panel): State<&'static Panel>,
              Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
                 log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
                 if !is_page_id_valid(page_id) {
@@ -87,7 +86,6 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
                 }
                 log::debug!("{LOGGER_NAME}: {:?}", page);
 
-                let mut panel = shared_panel.lock().await;
                 match panel.set_page(page_id, page).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
@@ -98,13 +96,12 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
             },
         )
         .delete(
-            |page_id: char, State(shared_panel): State<SharedPanel>| async move {
+            |page_id: char, State(panel): State<&'static Panel>| async move {
                 if !is_page_id_valid(page_id) {
                     return Err(Error::BadRequest("Page ID not valid".into()));
                 }
                 log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
-                let mut panel = shared_panel.lock().await;
                 match panel.delete_page(page_id).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
@@ -124,8 +121,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
 pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
-        get(|State(shared_panel): State<SharedPanel>| async move {
-            let mut panel = shared_panel.lock().await;
+        get(|State(panel): State<&'static Panel>| async move {
             match panel.get_pages().await {
                 Ok(pages) => Ok(Json(pages)),
                 Err(err) => {
@@ -135,9 +131,8 @@ pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
             }
         })
         .post(
-            |State(shared_panel): State<SharedPanel>,
+            |State(panel): State<&'static Panel>,
              Json::<Pages, JSON_DESERIALIZE_BUFFER_SIZE>(pages)| async move {
-                let mut panel = shared_panel.lock().await;
                 for page in pages {
                     if let Err(err) = panel.set_page(page.id, page).await {
                         log::error!("{LOGGER_NAME}: {err}");
@@ -158,13 +153,12 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
     picoserve::Router::new().route(
         ("", parse_path_segment::<char>()),
         get(
-            |schedule_id: char, State(shared_panel): State<SharedPanel>| async move {
+            |schedule_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
                 if !is_page_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
-                let mut panel = shared_panel.lock().await;
                 match panel.get_schedule(schedule_id).await {
                     Ok(Some(schedule)) => Ok(Json(schedule)),
                     Ok(None) => Err(Error::NotFound("Schedule not found".into())),
@@ -177,14 +171,13 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
         )
         .post(
             |schedule_id: char,
-             State(shared_panel): State<SharedPanel>,
+             State(panel): State<&'static Panel>,
              Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
                 log::info!("{LOGGER_NAME}: Setting schedule {schedule_id}");
                 if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
-                let mut panel = shared_panel.lock().await;
                 match panel.set_schedule(schedule_id, schedule).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
@@ -195,13 +188,12 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
             },
         )
         .delete(
-            |schedule_id: char, State(shared_panel): State<SharedPanel>| async move {
+            |schedule_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Deleting schedule {schedule_id}");
                 if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest("Schedule ID not valid".into()));
                 }
 
-                let mut panel = shared_panel.lock().await;
                 match panel.delete_schedule(schedule_id).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
@@ -221,8 +213,7 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
 pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
-        get(|State(shared_panel): State<SharedPanel>| async move {
-            let mut panel = shared_panel.lock().await;
+        get(|State(panel): State<&'static Panel>| async move {
             match panel.get_schedules().await {
                 Ok(schedules) => Ok(Json(schedules)),
                 Err(err) => {
@@ -232,9 +223,8 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
             }
         })
         .post(
-            |State(shared_panel): State<SharedPanel>,
+            |State(panel): State<&'static Panel>,
              Json::<Schedules, JSON_DESERIALIZE_BUFFER_SIZE>(schedules)| async move {
-                let mut panel = shared_panel.lock().await;
                 for schedule in schedules {
                     if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
                         log::error!("{LOGGER_NAME}: {err}");
@@ -251,9 +241,7 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
 pub fn delete_all_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
-        post(|State(shared_panel): State<SharedPanel>| async move {
-            let mut panel = shared_panel.lock().await;
-
+        post(|State(panel): State<&'static Panel>| async move {
             if let Err(err) = panel.delete_all().await {
                 log::error!("{LOGGER_NAME}: {err}");
                 return Err(err);
@@ -262,6 +250,9 @@ pub fn delete_all_router() -> picoserve::Router<impl PathRouter<AppState>, AppSt
             Ok(())
         }),
     )
+}
+pub fn ota_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
+    picoserve::Router::new().route("", put_service(OverTheAirUpdate))
 }
 
 /// Checks if an ID is valid (A-Z)
