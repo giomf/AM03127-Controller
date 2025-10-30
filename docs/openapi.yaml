@@ -287,6 +287,36 @@ paths:
             text/plain:
               schema:
                 type: string
+  /ota:
+    put:
+      summary: Over-the-air firmware update
+      description: Uploads a new firmware image for OTA update
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Update successful
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Bad request (wrong content type, invalid content length, or image too large)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
 components:
   schemas:
     Font:
@@ -402,6 +432,12 @@ components:
           $ref: '#/components/schemas/WaitingModeAndSpeed'
           default: "fastest_normal"
           description: Display mode and speed while waiting
+        waiting_time:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 25
+          description: Waiting time between leading and lagging (0=0.5s to 25=25s)
         message:
           type: string
           maxLength: 16
