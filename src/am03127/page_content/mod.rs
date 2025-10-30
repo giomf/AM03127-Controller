@@ -11,7 +11,7 @@ use super::{CommandAble, MESSAGE_STRING_SIZE};
 /// Leading effects for displaying content on the LED panel
 ///
 /// These effects control how content appears on the panel when it is first displayed.
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Leading {
     ///  8 pixel width display block will be moved from right to left one by one
@@ -82,7 +82,7 @@ impl Display for Leading {
 /// Lagging effects for content on the LED panel
 ///
 /// These effects control how content disappears from the panel when it is removed.
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Lagging {
     /// Image will be disappeared one line by one line from top to bottom
@@ -134,7 +134,7 @@ impl Display for Lagging {
 ///
 /// These settings control how content behaves while it is being displayed,
 /// including speed of transitions and special effects like blinking or playing sounds.
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WaitingModeAndSpeed {
     /// Display Blinking while waiting (fastest speed)
@@ -215,6 +215,25 @@ impl Display for WaitingModeAndSpeed {
     }
 }
 
+/// Represents the waiting time between leading and lagging
+///
+/// Starting at 0.5s == A to 24s == Z
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WaitingTime(u8);
+
+impl WaitingTime {
+    pub fn new(value: u8) -> Self {
+        // Max to 25 == Z
+        WaitingTime(value.min(25))
+    }
+}
+
+impl Display for WaitingTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", (self.0 + b'A') as char)
+    }
+}
+
 /// Represents a page of content for the LED panel
 ///
 /// A page contains text content and display settings that control
@@ -231,6 +250,8 @@ pub struct Page {
     pub lagging: Lagging,
     /// Speed and behavior while the page is displayed
     pub waiting_mode_and_speed: WaitingModeAndSpeed,
+    /// Waiting time between leading and lagging
+    pub waiting_time: WaitingTime,
     /// Text content of the page
     pub message: String<MESSAGE_STRING_SIZE>,
 }
@@ -268,8 +289,14 @@ impl Display for Page {
         let message = Self::replace_european_character(&self.message);
         write!(
             f,
-            "<L{}><P{}><F{}><M{}><WA><F{}>{}",
-            self.line, self.id, self.leading, self.waiting_mode_and_speed, self.lagging, message
+            "<L{}><P{}><F{}><M{}><W{}><F{}>{}",
+            self.line,
+            self.id,
+            self.leading,
+            self.waiting_mode_and_speed,
+            self.waiting_time,
+            self.lagging,
+            message
         )
     }
 }
