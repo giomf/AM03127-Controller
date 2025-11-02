@@ -24,22 +24,6 @@ pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
 /// Size of the schedule storage area in flash memory
 pub const SCHEDULE_STORAGE_SIZE: u32 = 0x3000;
 
-pub trait IdAble {
-    fn get_id(&self) -> char;
-}
-
-impl IdAble for Page {
-    fn get_id(&self) -> char {
-        self.id
-    }
-}
-
-impl IdAble for Schedule {
-    fn get_id(&self) -> char {
-        self.id
-    }
-}
-
 /// Implementation of Value trait for Page to enable serialization/deserialization
 impl<'a> Value<'a> for Page {
     /// Serializes a Page into a byte buffer
@@ -131,9 +115,7 @@ pub struct NvsStorageSection<T, const S: usize> {
     _type: PhantomData<T>,
 }
 
-impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
-    NvsStorageSection<Option<T>, S>
-{
+impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<Option<T>, S> {
     /// Creates a new storage section in flash memory
     ///
     /// # Arguments
