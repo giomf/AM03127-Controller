@@ -1,11 +1,12 @@
+extern crate alloc;
 use crate::{
     SharedStorage,
     am03127::{page_content::Page, schedule::Schedule},
     error::Error,
 };
+use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 use embassy_embedded_hal::adapter::BlockingAsync;
-use heapless::{FnvIndexMap, Vec};
 use sequential_storage::{
     cache::NoCache,
     erase_all,
@@ -194,17 +195,16 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
     /// # Returns
     /// * `Ok(Vec<T, N>)` - Vector of all items
     /// * `Err(Error)` - If reading failed
-    pub async fn read_all<const N: usize>(&self) -> Result<Vec<T, N>, Error> {
+    pub async fn read_all(&self) -> Result<Vec<T>, Error> {
         log::info!("{LOGGER_NAME}: Reading all");
 
         let mut cache = NoCache::new();
         let mut data_buffer = [0; S];
 
-        let mut values = FnvIndexMap::<_, _, N>::new();
         let flash = &mut *self.flash.lock().await;
         let mut flash = BlockingAsync::new(flash);
 
-        let mut pages_iterator = map::fetch_all_items::<u8, _, _>(
+        let mut item_iterator = map::fetch_all_items::<u8, _, _>(
             &mut flash,
             self.flash_range.clone(),
             &mut cache,
@@ -212,14 +212,12 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
         )
         .await?;
 
-        while let Some((_, value)) = pages_iterator.next::<Option<T>>(&mut data_buffer).await? {
-            if let Some(valid_value) = value {
-                values
-                    .insert(valid_value.get_id(), valid_value)
-                    .map_err(|_| Error::Internal("Failed set valid value".try_into().unwrap()))?;
+        let mut values = Vec::new();
+        while let Some((_, item)) = item_iterator.next::<Option<T>>(&mut data_buffer).await? {
+            if let Some(valid_item) = item {
+                values.push(valid_item);
             }
         }
-        let values = values.values().cloned().collect();
         Ok(values)
     }
 

@@ -10,6 +10,7 @@ mod server;
 mod storage;
 mod uart;
 
+use crate::clock::timing_task;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -17,10 +18,10 @@ use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::esp_app_desc;
-use esp_hal::interrupt::software::SoftwareInterruptControl;
-use esp_hal::peripherals::WIFI;
-use esp_hal::ram;
-use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::{
+    clock::CpuClock, interrupt::software::SoftwareInterruptControl, peripherals::WIFI, ram,
+    rng::Rng, timer::timg::TimerGroup,
+};
 use esp_radio::{
     Controller, init,
     wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
@@ -30,8 +31,6 @@ use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, make_static};
 use server::{AppProps, AppState, web_task};
 use uart::Uart;
-
-use crate::clock::timing_task;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 // Webtask poolsize + sntp socket + one extra
@@ -51,8 +50,9 @@ async fn main(spawner: Spawner) {
     let esp_config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(esp_config);
 
+    // 256 KB Heap
     esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
-    esp_alloc::heap_allocator!(size: 36 * 1024);
+    esp_alloc::heap_allocator!(size: 192 * 1024);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let shared_uart = make_static!(

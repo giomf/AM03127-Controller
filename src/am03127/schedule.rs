@@ -1,10 +1,8 @@
+extern crate alloc;
 use super::CommandAble;
+use alloc::string::String;
 use core::fmt::Display;
-use heapless::String;
 use serde::{Deserialize, Serialize};
-
-/// Maximum number of characters allowed in the pages field
-const MAX_SCHEDULES_PAGES: usize = 31;
 
 /// Represents a schedule for displaying pages on the LED panel
 ///
@@ -19,7 +17,7 @@ pub struct Schedule {
     /// End time for the schedule
     to: ScheduleDateTime,
     /// List of page IDs to display during this schedule
-    pages: String<MAX_SCHEDULES_PAGES>,
+    pages: String,
 }
 
 impl CommandAble for Schedule {}

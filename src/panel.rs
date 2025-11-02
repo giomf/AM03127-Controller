@@ -1,3 +1,4 @@
+extern crate alloc;
 use crate::{
     SharedStorage, SharedUart,
     am03127::{
@@ -14,18 +15,12 @@ use crate::{
         SCHEDULE_STORAGE_SIZE,
     },
 };
-use heapless::Vec;
+use alloc::vec::Vec;
 
 /// Logger name for panel-related log messages
 const LOGGER_NAME: &str = "Panel";
 /// Default ID for the LED panel
 const DEFAULT_PANEL_ID: u8 = 1;
-/// Maximum number of pages that can be stored (A-Z)
-/// Has to be a power of 2
-const MAX_PAGES: usize = 32;
-/// Maximum number of schedules that can be stored (A-E)
-/// Has to be a power of 2
-const MAX_SCHEDULES: usize = 8;
 /// Size of a key in memory
 const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
 /// Size of a Page struct in memory
@@ -38,9 +33,9 @@ const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE;
 const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE;
 
 /// Type alias for a collection of pages
-pub type Pages = Vec<Page, MAX_PAGES>;
+pub type Pages = Vec<Page>;
 /// Type alias for a collection of schedules
-pub type Schedules = Vec<Schedule, MAX_SCHEDULES>;
+pub type Schedules = Vec<Schedule>;
 
 /// Main controller for the LED panel
 ///
@@ -89,7 +84,7 @@ impl Panel {
     pub async fn init(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Initialize panel");
         let command = set_id(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.init_pages().await?;
         self.init_schedules().await?;
         Ok(())
@@ -101,7 +96,7 @@ impl Panel {
         let pages: Pages = self.page_storage.read_all().await?;
         for page in pages {
             let command = page.command(DEFAULT_PANEL_ID);
-            self.uart.lock().await.write(command).await?;
+            self.uart.lock().await.write(&command).await?;
         }
 
         Ok(())
@@ -113,7 +108,7 @@ impl Panel {
         let schedules: Schedules = self.schedule_storage.read_all().await?;
         for schedule in schedules {
             let command = schedule.command(DEFAULT_PANEL_ID);
-            self.uart.lock().await.write(command).await?;
+            self.uart.lock().await.write(&command).await?;
         }
 
         Ok(())
@@ -130,7 +125,7 @@ impl Panel {
     pub async fn set_clock(&self, date_time: DateTime) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Setting clock");
         let command = date_time.command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
 
         Ok(())
     }
@@ -150,7 +145,7 @@ impl Panel {
 
         let command = page.command(DEFAULT_PANEL_ID);
 
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.page_storage.write(page_id, page).await?;
 
         Ok(())
@@ -193,7 +188,7 @@ impl Panel {
 
         let command = DeletePage::new(page_id).command(DEFAULT_PANEL_ID);
 
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.page_storage.delete(page_id).await?;
 
         Ok(())
@@ -213,7 +208,7 @@ impl Panel {
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 
         let command = schedule.command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.schedule_storage.write(schedule_id, schedule).await?;
 
         Ok(())
@@ -255,7 +250,7 @@ impl Panel {
         log::info!("{LOGGER_NAME}: Deleting page \"{schedule_id}\"");
 
         let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.schedule_storage.delete(schedule_id).await?;
 
         Ok(())
@@ -265,7 +260,7 @@ impl Panel {
         log::info!("{LOGGER_NAME}: Deleting all");
 
         let command = DeleteAll {}.command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(command).await?;
+        self.uart.lock().await.write(&command).await?;
         self.page_storage.delete_all().await?;
         self.schedule_storage.delete_all().await?;
         Ok(())

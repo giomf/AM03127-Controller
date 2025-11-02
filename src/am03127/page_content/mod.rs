@@ -2,11 +2,12 @@
 
 pub mod formatting;
 
+extern crate alloc;
+use alloc::string::String;
 use core::fmt::{self, Display};
-use heapless::String;
 use serde::{Deserialize, Serialize};
 
-use super::{CommandAble, MESSAGE_STRING_SIZE};
+use super::CommandAble;
 
 /// Leading effects for displaying content on the LED panel
 ///
@@ -253,7 +254,7 @@ pub struct Page {
     /// Waiting time between leading and lagging
     pub waiting_time: WaitingTime,
     /// Text content of the page
-    pub message: String<MESSAGE_STRING_SIZE>,
+    pub message: String,
 }
 
 impl CommandAble for Page {}
@@ -266,18 +267,18 @@ impl Page {
     ///
     /// # Returns
     /// * A new string with European characters replaced by panel codes
-    fn replace_european_character(message: &str) -> String<MESSAGE_STRING_SIZE> {
-        let mut result = String::<MESSAGE_STRING_SIZE>::new();
+    fn replace_european_character(message: &str) -> String {
+        let mut result = String::new();
         for c in message.chars() {
             match c {
-                'ü' => result.push_str("<U7C>").unwrap_or(()),
-                'Ü' => result.push_str("<U5C>").unwrap_or(()),
-                'ä' => result.push_str("<U64>").unwrap_or(()),
-                'Ä' => result.push_str("<U44>").unwrap_or(()),
-                'ö' => result.push_str("<U76>").unwrap_or(()),
-                'Ö' => result.push_str("<U56>").unwrap_or(()),
-                'ß' => result.push_str("<U5F>").unwrap_or(()),
-                _ => result.push(c).unwrap_or(()),
+                'ü' => result.push_str("<U7C>"),
+                'Ü' => result.push_str("<U5C>"),
+                'ä' => result.push_str("<U64>"),
+                'Ä' => result.push_str("<U44>"),
+                'ö' => result.push_str("<U76>"),
+                'Ö' => result.push_str("<U56>"),
+                'ß' => result.push_str("<U5F>"),
+                _ => result.push(c),
             }
         }
         result

@@ -5,16 +5,14 @@ pub mod page_content;
 pub mod realtime_clock;
 pub mod schedule;
 
-use core::fmt::{Display, Write};
-use heapless::String;
+extern crate alloc;
+use alloc::{
+    format,
+    string::{String, ToString},
+};
+use core::fmt::Display;
 
 // Constants for string sizes and defaults
-/// Maximum size for message strings
-pub const MESSAGE_STRING_SIZE: usize = 16;
-/// Maximum size for command strings
-pub const COMMAND_STRING_SIZE: usize = 64;
-/// Size of the checksum in bytes
-pub const CHECKSUM_STRING_SIZE: usize = 2;
 /// Default page ID
 pub const DEFAULT_PAGE: char = 'A';
 /// Default line number
@@ -35,13 +33,10 @@ pub trait CommandAble: Display {
     ///
     /// # Returns
     /// * A string containing the formatted command
-    fn command(&self, id: u8) -> String<COMMAND_STRING_SIZE> {
-        let mut payload = String::<{ COMMAND_STRING_SIZE - CHECKSUM_STRING_SIZE }>::new();
-        write!(payload, "{}", self).unwrap();
+    fn command(&self, id: u8) -> String {
+        let payload = self.to_string();
         let checksum = checksum(&payload);
-        let mut buffer = String::<COMMAND_STRING_SIZE>::new();
-        write!(&mut buffer, "<ID{:02X}>{}{:02X}<E>", id, payload, checksum).unwrap();
-        buffer
+        format!("<ID{:02X}>{}{:02X}<E>", id, payload, checksum)
     }
 }
 
@@ -52,10 +47,8 @@ pub trait CommandAble: Display {
 ///
 /// # Returns
 /// * A string containing the formatted command
-pub fn set_id(id: u8) -> String<COMMAND_STRING_SIZE> {
-    let mut buffer = String::<COMMAND_STRING_SIZE>::new();
-    write!(&mut buffer, "<ID><{:02X}><E>", id).unwrap();
-    buffer
+pub fn set_id(id: u8) -> String {
+    format!("<ID><{:02X}><E>", id)
 }
 
 /// Calculates the checksum for a command payload

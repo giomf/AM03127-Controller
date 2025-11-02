@@ -1,4 +1,6 @@
-use crate::{am03127::COMMAND_STRING_SIZE, error::Error};
+extern crate alloc;
+
+use crate::error::Error;
 use embassy_time::{Duration, with_timeout};
 use embedded_io_async::Write;
 use esp_hal::{
@@ -7,7 +9,6 @@ use esp_hal::{
     peripherals::UART1,
     uart::{Config, DataBits, Parity, Uart as UartDriver},
 };
-use heapless::String;
 
 /// Baud rate for UART communication with the LED panel
 const BAUD_RATE: u32 = 9600;
@@ -65,7 +66,7 @@ impl<'a> Uart<'a> {
     /// # Returns
     /// * `Ok(())` if the write was successful and the panel acknowledged it
     /// * `Err(Error)` if the write failed or the panel rejected the command
-    pub async fn write(&mut self, data: String<COMMAND_STRING_SIZE>) -> Result<(), Error> {
+    pub async fn write(&mut self, data: &str) -> Result<(), Error> {
         log::debug!("{LOGGER_NAME}: Sending {data}");
 
         let timeout = Duration::from_secs(UART_TIMEOUT_SECS);

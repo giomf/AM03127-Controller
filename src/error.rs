@@ -1,9 +1,10 @@
-use core::fmt::{Display, Write};
+extern crate alloc;
+use alloc::{
+    format,
+    string::{String, ToString},
+};
+use core::fmt::Display;
 use esp_storage::FlashStorageError;
-use heapless::String as HString;
-
-/// Type alias for a fixed-size string used in error messages
-type String = HString<64>;
 
 /// Error types for the application
 ///
@@ -38,38 +39,38 @@ impl core::error::Error for Error {}
 
 impl From<sequential_storage::Error<FlashStorageError>> for Error {
     fn from(value: sequential_storage::Error<FlashStorageError>) -> Self {
-        let mut message = String::new();
-        match value {
+        use alloc::format;
+
+        let message = match value {
             sequential_storage::Error::Storage { value, .. } => {
                 const PREFIX: &str = "Internal Storage error:";
                 match value {
-                    FlashStorageError::IoError => write!(message, "{PREFIX} I/O error"),
-                    FlashStorageError::IoTimeout => write!(message, "{PREFIX} I/O timeout"),
-                    FlashStorageError::CantUnlock => write!(message, "{PREFIX} can not unlock"),
-                    FlashStorageError::NotAligned => write!(message, "{PREFIX} not aligned"),
-                    FlashStorageError::OutOfBounds => write!(message, "{PREFIX} out of bounds"),
-                    FlashStorageError::Other(code) => write!(message, "{PREFIX} {code}"),
-                    _ => write!(message, "{PREFIX} unknown error"),
+                    FlashStorageError::IoError => format!("{PREFIX} I/O error"),
+                    FlashStorageError::IoTimeout => format!("{PREFIX} I/O timeout"),
+                    FlashStorageError::CantUnlock => format!("{PREFIX} can not unlock"),
+                    FlashStorageError::NotAligned => format!("{PREFIX} not aligned"),
+                    FlashStorageError::OutOfBounds => format!("{PREFIX} out of bounds"),
+                    FlashStorageError::Other(code) => format!("{PREFIX} {code}"),
+                    _ => format!("{PREFIX} unknown error"),
                 }
             }
-            sequential_storage::Error::FullStorage => write!(message, "Storage is full"),
-            sequential_storage::Error::Corrupted { .. } => write!(message, "Storage is corrupted"),
+            sequential_storage::Error::FullStorage => "Storage is full".to_string(),
+            sequential_storage::Error::Corrupted { .. } => "Storage is corrupted".to_string(),
             sequential_storage::Error::BufferTooBig => {
-                write!(message, "A provided buffer was to big to be used")
+                "A provided buffer was too big to be used".to_string()
             }
-            sequential_storage::Error::BufferTooSmall(needed) => write!(
-                message,
-                "A provided buffer was to small to be used. Needed was {needed}"
-            ),
+            sequential_storage::Error::BufferTooSmall(needed) => {
+                format!("A provided buffer was too small to be used. Needed was {needed}")
+            }
             sequential_storage::Error::SerializationError(value) => {
-                write!(message, "Map value error: {value}")
+                format!("Map value error: {value}")
             }
             sequential_storage::Error::ItemTooBig => {
-                write!(message, "The item is too big to fit in the flash")
+                "The item is too big to fit in the flash".to_string()
             }
-            _ => write!(message, "Unknown error"),
-        }
-        .expect("Failed to write error message");
+            _ => "Unknown error".to_string(),
+        };
+
         Self::Storage(message)
     }
 }
@@ -79,23 +80,19 @@ impl From<esp_hal::uart::IoError> for Error {
         match value {
             esp_hal::uart::IoError::Tx(tx_error) => Self::from(tx_error),
             esp_hal::uart::IoError::Rx(rx_error) => Self::from(rx_error),
-            _ => Self::Uart("Unknown error".try_into().unwrap()),
+            _ => Self::Uart("Unknown error".to_string()),
         }
     }
 }
 
 impl From<esp_hal::uart::RxError> for Error {
     fn from(value: esp_hal::uart::RxError) -> Self {
-        let mut message = String::new();
-        write!(message, "{value}").expect("Failed to read message");
-        Self::Uart(message)
+        Self::Uart(value.to_string())
     }
 }
 
 impl From<esp_hal::uart::TxError> for Error {
     fn from(value: esp_hal::uart::TxError) -> Self {
-        let mut message = String::new();
-        write!(message, "{value}").expect("Failed to write message");
-        Self::Uart(message)
+        Self::Uart(value.to_string())
     }
 }
