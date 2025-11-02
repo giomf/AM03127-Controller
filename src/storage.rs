@@ -212,10 +212,7 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
         )
         .await?;
 
-        while let Some((_, value)) = pages_iterator
-            .next::<u8, Option<T>>(&mut data_buffer)
-            .await?
-        {
+        while let Some((_, value)) = pages_iterator.next::<Option<T>>(&mut data_buffer).await? {
             if let Some(valid_value) = value {
                 values
                     .insert(valid_value.get_id(), valid_value)
