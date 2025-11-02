@@ -219,7 +219,7 @@ impl<T: for<'a> Value<'a> + IdAble + Clone + Debug, const S: usize>
             if let Some(valid_value) = value {
                 values
                     .insert(valid_value.get_id(), valid_value)
-                    .map_err(|_| Error::Internal("Failed set valid value".into()))?;
+                    .map_err(|_| Error::Internal("Failed set valid value".try_into().unwrap()))?;
             }
         }
         let values = values.values().cloned().collect();

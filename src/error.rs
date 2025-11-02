@@ -79,7 +79,7 @@ impl From<esp_hal::uart::IoError> for Error {
         match value {
             esp_hal::uart::IoError::Tx(tx_error) => Self::from(tx_error),
             esp_hal::uart::IoError::Rx(rx_error) => Self::from(rx_error),
-            _ => Self::Uart("Unknown error".into()),
+            _ => Self::Uart("Unknown error".try_into().unwrap()),
         }
     }
 }

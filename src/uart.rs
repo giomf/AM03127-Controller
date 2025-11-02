@@ -71,12 +71,12 @@ impl<'a> Uart<'a> {
         let timeout = Duration::from_secs(UART_TIMEOUT_SECS);
         with_timeout(timeout, self.uart.write_all(data.as_bytes()))
             .await
-            .map_err(|_| Error::Uart(String::from("Write timeout")))??;
+            .map_err(|_| Error::Uart("Write timeout".try_into().unwrap()))??;
 
         let mut buffer = [0u8; READ_BUFFER_SIZE];
         let bytes_read = with_timeout(timeout, self.uart.read_async(&mut buffer))
             .await
-            .map_err(|_| Error::Uart(String::from("Read timeout")))??;
+            .map_err(|_| Error::Uart("Read timeout".try_into().unwrap()))??;
 
         log::debug!("{LOGGER_NAME}: Receiving {bytes_read} bytes");
         let response = core::str::from_utf8(&buffer[..bytes_read]).unwrap();

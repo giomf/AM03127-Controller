@@ -63,12 +63,12 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
             |page_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
                 if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".into()));
+                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
                 }
 
                 match panel.get_page(page_id).await {
                     Ok(Some(page)) => Ok(Json(page)),
-                    Ok(None) => Err(Error::NotFound("Page not found".into())),
+                    Ok(None) => Err(Error::NotFound("Page not found".try_into().unwrap())),
                     Err(err) => {
                         log::error!("{LOGGER_NAME}: {err}");
                         Err(err)
@@ -82,7 +82,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
              Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
                 log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
                 if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".into()));
+                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
                 }
                 log::debug!("{LOGGER_NAME}: {:?}", page);
 
@@ -98,7 +98,7 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
         .delete(
             |page_id: char, State(panel): State<&'static Panel>| async move {
                 if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".into()));
+                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
                 }
                 log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
@@ -156,12 +156,14 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
             |schedule_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
                 if !is_page_id_valid(schedule_id) {
-                    return Err(Error::BadRequest("Schedule ID not valid".into()));
+                    return Err(Error::BadRequest(
+                        "Schedule ID not valid".try_into().unwrap(),
+                    ));
                 }
 
                 match panel.get_schedule(schedule_id).await {
                     Ok(Some(schedule)) => Ok(Json(schedule)),
-                    Ok(None) => Err(Error::NotFound("Schedule not found".into())),
+                    Ok(None) => Err(Error::NotFound("Schedule not found".try_into().unwrap())),
                     Err(err) => {
                         log::error!("{LOGGER_NAME}: {err}");
                         Err(err)
@@ -175,7 +177,9 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
              Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
                 log::info!("{LOGGER_NAME}: Setting schedule {schedule_id}");
                 if !is_schedule_id_valid(schedule_id) {
-                    return Err(Error::BadRequest("Schedule ID not valid".into()));
+                    return Err(Error::BadRequest(
+                        "Schedule ID not valid".try_into().unwrap(),
+                    ));
                 }
 
                 match panel.set_schedule(schedule_id, schedule).await {
@@ -191,7 +195,9 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
             |schedule_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Deleting schedule {schedule_id}");
                 if !is_schedule_id_valid(schedule_id) {
-                    return Err(Error::BadRequest("Schedule ID not valid".into()));
+                    return Err(Error::BadRequest(
+                        "Schedule ID not valid".try_into().unwrap(),
+                    ));
                 }
 
                 match panel.delete_schedule(schedule_id).await {
