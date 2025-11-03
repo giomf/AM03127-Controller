@@ -2,18 +2,16 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 
+use am03127::{page::Page, schedule::Schedule};
 use embassy_embedded_hal::adapter::BlockingAsync;
 use sequential_storage::{
     cache::NoCache,
     erase_all,
     map::{self, SerializationError, Value},
 };
+use serde::Deserialize;
 
-use crate::{
-    SharedStorage,
-    am03127::{page_content::Page, schedule::Schedule},
-    error::Error,
-};
+use crate::{SharedStorage, error::Error};
 
 /// Logger name for storage-related log messages
 const LOGGER_NAME: &str = "NvsStorage";
@@ -26,8 +24,24 @@ pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
 /// Size of the schedule storage area in flash memory
 pub const SCHEDULE_STORAGE_SIZE: u32 = 0x3000;
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct PageWrapper(pub Page);
+impl From<Page> for PageWrapper {
+    fn from(page: Page) -> Self {
+        PageWrapper(page)
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ScheduleWrapper(pub Schedule);
+impl From<Schedule> for ScheduleWrapper {
+    fn from(schedule: Schedule) -> Self {
+        ScheduleWrapper(schedule)
+    }
+}
+
 /// Implementation of Value trait for Page to enable serialization/deserialization
-impl<'a> Value<'a> for Page {
+impl<'a> Value<'a> for PageWrapper {
     /// Serializes a Page into a byte buffer
     ///
     /// # Arguments
@@ -37,10 +51,10 @@ impl<'a> Value<'a> for Page {
     /// * `Ok(usize)` - The number of bytes written
     /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
-        if buffer.len() < core::mem::size_of::<Self>() {
+        if buffer.len() < core::mem::size_of::<Page>() {
             return Err(SerializationError::BufferTooSmall);
         }
-        match postcard::to_slice(&self, buffer) {
+        match postcard::to_slice(&self.0, buffer) {
             Ok(used) => Ok(used.len()),
             Err(_) => Err(SerializationError::InvalidData),
         }
@@ -58,15 +72,15 @@ impl<'a> Value<'a> for Page {
     where
         Self: Sized,
     {
-        match postcard::from_bytes::<Self>(&buffer) {
-            Ok(page) => Ok(page),
+        match postcard::from_bytes::<Page>(&buffer) {
+            Ok(page) => Ok(page.into()),
             Err(_) => Err(SerializationError::InvalidData),
         }
     }
 }
 
 /// Implementation of Value trait for Schedule to enable serialization/deserialization
-impl<'a> Value<'a> for Schedule {
+impl<'a> Value<'a> for ScheduleWrapper {
     /// Serializes a Schedule into a byte buffer
     ///
     /// # Arguments
@@ -76,10 +90,10 @@ impl<'a> Value<'a> for Schedule {
     /// * `Ok(usize)` - The number of bytes written
     /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
-        if buffer.len() < core::mem::size_of::<Self>() {
+        if buffer.len() < core::mem::size_of::<Schedule>() {
             return Err(SerializationError::BufferTooSmall);
         }
-        match postcard::to_slice(&self, buffer) {
+        match postcard::to_slice(&self.0, buffer) {
             Ok(used) => Ok(used.len()),
             Err(_) => Err(SerializationError::InvalidData),
         }
@@ -97,8 +111,8 @@ impl<'a> Value<'a> for Schedule {
     where
         Self: Sized,
     {
-        match postcard::from_bytes::<Self>(&buffer) {
-            Ok(schedule) => Ok(schedule),
+        match postcard::from_bytes::<Schedule>(&buffer) {
+            Ok(schedule) => Ok(schedule.into()),
             Err(_) => Err(SerializationError::InvalidData),
         }
     }
@@ -117,7 +131,7 @@ pub struct NvsStorageSection<T, const S: usize> {
     _type: PhantomData<T>,
 }
 
-impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<Option<T>, S> {
+impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<T, S> {
     /// Creates a new storage section in flash memory
     ///
     /// # Arguments

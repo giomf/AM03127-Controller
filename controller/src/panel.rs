@@ -1,20 +1,21 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
+use am03127::{
+    CommandAble,
+    delete::{DeleteAll, DeletePage, DeleteSchedule},
+    page::Page,
+    realtime_clock::DateTime,
+    schedule::Schedule,
+    set_id,
+};
+
 use crate::{
     SharedStorage, SharedUart,
-    am03127::{
-        CommandAble,
-        delete::{DeleteAll, DeletePage, DeleteSchedule},
-        page_content::Page,
-        realtime_clock::DateTime,
-        schedule::Schedule,
-        set_id,
-    },
     error::Error,
     storage::{
-        NvsStorageSection, PAGE_STORAGE_BEGIN, PAGE_STORAGE_SIZE, SCHEDULE_STORAGE_BEGIN,
-        SCHEDULE_STORAGE_SIZE,
+        NvsStorageSection, PAGE_STORAGE_BEGIN, PAGE_STORAGE_SIZE, PageWrapper,
+        SCHEDULE_STORAGE_BEGIN, SCHEDULE_STORAGE_SIZE, ScheduleWrapper,
     },
 };
 
@@ -46,9 +47,9 @@ pub struct Panel {
     /// UART interface for communicating with the panel
     uart: SharedUart,
     /// Storage for pages
-    page_storage: NvsStorageSection<Option<Page>, { PAGE_ENTRY_SIZE }>,
+    page_storage: NvsStorageSection<PageWrapper, { PAGE_ENTRY_SIZE }>,
     /// Storage for schedules
-    schedule_storage: NvsStorageSection<Option<Schedule>, { SCHEDULE_ENTRY_SIZE }>,
+    schedule_storage: NvsStorageSection<ScheduleWrapper, { SCHEDULE_ENTRY_SIZE }>,
 }
 
 impl Panel {
@@ -94,7 +95,14 @@ impl Panel {
     async fn init_pages(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init pages");
 
-        let pages: Pages = self.page_storage.read_all().await?;
+        let pages: Pages = self
+            .page_storage
+            .read_all()
+            .await?
+            .into_iter()
+            .map(|page_wrapper| page_wrapper.0)
+            .collect();
+
         for page in pages {
             let command = page.command(DEFAULT_PANEL_ID);
             self.uart.lock().await.write(&command).await?;
@@ -106,7 +114,14 @@ impl Panel {
     async fn init_schedules(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init schedules");
 
-        let schedules: Schedules = self.schedule_storage.read_all().await?;
+        let schedules: Schedules = self
+            .schedule_storage
+            .read_all()
+            .await?
+            .into_iter()
+            .map(|schedule_wrapper| schedule_wrapper.0)
+            .collect();
+
         for schedule in schedules {
             let command = schedule.command(DEFAULT_PANEL_ID);
             self.uart.lock().await.write(&command).await?;
@@ -123,7 +138,7 @@ impl Panel {
     /// # Returns
     /// * `Ok(())` if the clock was set successfully
     /// * `Err(Error)` if setting the clock failed
-    pub async fn set_clock(&self, date_time: DateTime) -> Result<(), Error> {
+    pub async fn set_clock(&self, date_time: &DateTime) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Setting clock");
         let command = date_time.command(DEFAULT_PANEL_ID);
         self.uart.lock().await.write(&command).await?;
@@ -147,7 +162,7 @@ impl Panel {
         let command = page.command(DEFAULT_PANEL_ID);
 
         self.uart.lock().await.write(&command).await?;
-        self.page_storage.write(page_id, page).await?;
+        self.page_storage.write(page_id, PageWrapper(page)).await?;
 
         Ok(())
     }
@@ -163,7 +178,10 @@ impl Panel {
     /// * `Err(Error)` if retrieving the page failed
     pub async fn get_page(&self, page_id: char) -> Result<Option<Page>, Error> {
         log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
-        self.page_storage.read(page_id).await
+        self.page_storage
+            .read(page_id)
+            .await
+            .map(|opt| opt.map(|page_wrapper| page_wrapper.0))
     }
 
     /// Retrieves all pages from storage
@@ -173,7 +191,13 @@ impl Panel {
     /// * `Err(Error)` if retrieving the pages failed
     pub async fn get_pages(&self) -> Result<Pages, Error> {
         log::info!("{LOGGER_NAME}: Getting pages");
-        self.page_storage.read_all().await
+        Ok(self
+            .page_storage
+            .read_all()
+            .await?
+            .into_iter()
+            .map(|page_wrapper| page_wrapper.0)
+            .collect())
     }
 
     /// Deletes a page from the panel and storage
@@ -210,7 +234,9 @@ impl Panel {
 
         let command = schedule.command(DEFAULT_PANEL_ID);
         self.uart.lock().await.write(&command).await?;
-        self.schedule_storage.write(schedule_id, schedule).await?;
+        self.schedule_storage
+            .write(schedule_id, schedule.into())
+            .await?;
 
         Ok(())
     }
@@ -226,7 +252,10 @@ impl Panel {
     /// * `Err(Error)` if retrieving the schedule failed
     pub async fn get_schedule(&self, schedule_id: char) -> Result<Option<Schedule>, Error> {
         log::info!("{LOGGER_NAME}: Getting schedule \"{schedule_id}\"");
-        self.schedule_storage.read(schedule_id).await
+        self.schedule_storage
+            .read(schedule_id)
+            .await
+            .map(|opt| opt.map(|schedule_wrapper| schedule_wrapper.0))
     }
 
     /// Retrieves all schedules from storage
@@ -236,7 +265,13 @@ impl Panel {
     /// * `Err(Error)` if retrieving the schedules failed
     pub async fn get_schedules(&self) -> Result<Schedules, Error> {
         log::info!("{LOGGER_NAME}: Getting schedules");
-        self.schedule_storage.read_all().await
+        Ok(self
+            .schedule_storage
+            .read_all()
+            .await?
+            .into_iter()
+            .map(|schedule_wrapper| schedule_wrapper.0)
+            .collect())
     }
 
     /// Deletes a schedule from the panel and storage

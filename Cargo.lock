@@ -9,9 +9,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c583acf993cf4245c4acb0a2cc2ab1f9cc097de73411bb6d3647ff6af2b1013d"
 
 [[package]]
+name = "am03127"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "am03127-controller"
 version = "0.1.0"
 dependencies = [
+ "am03127",
  "critical-section",
  "embassy-embedded-hal",
  "embassy-executor",

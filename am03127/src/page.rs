@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-pub mod formatting;
-
 extern crate alloc;
 use alloc::string::String;
 use core::fmt::{self, Display};

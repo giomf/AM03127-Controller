@@ -1,7 +1,9 @@
+#![no_std]
 #![allow(dead_code)]
 
 pub mod delete;
-pub mod page_content;
+pub mod formatting;
+pub mod page;
 pub mod realtime_clock;
 pub mod schedule;
 

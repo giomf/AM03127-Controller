@@ -1,5 +1,6 @@
-use core::net::SocketAddr;
+use core::{net::SocketAddr, ops::Deref};
 
+use am03127::realtime_clock::DateTime;
 use embassy_net::{
     Stack as NetworkStack,
     udp::{PacketMetadata, UdpSocket},
@@ -8,8 +9,7 @@ use embassy_time::{Duration, Timer};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
 use time::OffsetDateTime;
 
-use crate::{am03127::realtime_clock::DateTime, panel::Panel};
-// use crate::server::SharedPanel;
+use crate::panel::Panel;
 
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];
 const SNTP_PORT: u16 = 123;
@@ -30,9 +30,11 @@ impl NtpTimestampGenerator for DummyTimestampGenerator {
     }
 }
 
-impl From<OffsetDateTime> for DateTime {
+pub struct DateTimeWrapper(pub DateTime);
+
+impl From<OffsetDateTime> for DateTimeWrapper {
     fn from(value: OffsetDateTime) -> Self {
-        Self {
+        DateTimeWrapper(DateTime {
             year: (value.year() % 100) as u8,
             week: value.iso_week(),
             month: value.month() as u8,
@@ -40,7 +42,15 @@ impl From<OffsetDateTime> for DateTime {
             hour: value.hour(),
             minute: value.minute(),
             second: value.second(),
-        }
+        })
+    }
+}
+
+impl Deref for DateTimeWrapper {
+    type Target = DateTime;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -70,7 +80,7 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
                 log::info!("{LOGGER_NAME}: Setting curernt date to panel");
                 let timestamp = result.sec();
                 let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
-                match panel.set_clock(datetime.into()).await {
+                match panel.set_clock(&DateTimeWrapper::from(datetime)).await {
                     Ok(_) => {
                         log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")
                     }

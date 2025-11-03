@@ -1,3 +1,4 @@
+use am03127::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 use picoserve::{
     extract::{Json, State},
     routing::{PathRouter, get, get_service, parse_path_segment, post, put_service},
@@ -5,7 +6,6 @@ use picoserve::{
 
 use super::AppState;
 use crate::{
-    am03127::{page_content::Page, realtime_clock::DateTime, schedule::Schedule},
     error::Error,
     panel::{Pages, Panel, Schedules},
     server::ota::OverTheAirUpdate,
@@ -39,7 +39,7 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
              Json::<DateTime, JSON_DESERIALIZE_BUFFER_SIZE>(date_time)| async move {
                 log::info!("{LOGGER_NAME}: Set clock");
 
-                match panel.set_clock(date_time).await {
+                match panel.set_clock(&date_time).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         log::error!("{LOGGER_NAME}: {err}");

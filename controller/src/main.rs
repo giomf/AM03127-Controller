@@ -2,7 +2,6 @@
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 #[deny(clippy::mem_forget)]
-mod am03127;
 mod clock;
 mod error;
 mod panel;
