@@ -13,7 +13,7 @@ use crate::panel::Panel;
 
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];
 const SNTP_PORT: u16 = 123;
-const UPDATE_INTERVAL_SECS: u64 = 3600;
+const UPDATE_INTERVAL_SECS: u64 = 86_000;
 const LOGGER_NAME: &str = "Clock";
 
 #[derive(Copy, Clone, Default)]
