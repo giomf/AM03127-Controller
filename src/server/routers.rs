@@ -1,15 +1,14 @@
-use super::AppState;
-use crate::am03127::page_content::Page;
-use crate::am03127::realtime_clock::DateTime;
-use crate::am03127::schedule::Schedule;
-use crate::error::Error;
-use crate::panel::{Pages, Panel, Schedules};
-use crate::server::ota::OverTheAirUpdate;
-use picoserve::extract::Json;
-use picoserve::routing::{get_service, parse_path_segment, post, put_service};
 use picoserve::{
-    extract::State,
-    routing::{PathRouter, get},
+    extract::{Json, State},
+    routing::{PathRouter, get, get_service, parse_path_segment, post, put_service},
+};
+
+use super::AppState;
+use crate::{
+    am03127::{page_content::Page, realtime_clock::DateTime, schedule::Schedule},
+    error::Error,
+    panel::{Pages, Panel, Schedules},
+    server::ota::OverTheAirUpdate,
 };
 
 /// Logger name for router-related log messages

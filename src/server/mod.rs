@@ -2,13 +2,15 @@ mod layers;
 mod ota;
 mod routers;
 
-use crate::SharedStorage;
-use crate::panel::Panel;
-use crate::{WEB_TASK_POOL_SIZE, error::Error};
 use embassy_time::Duration;
 use layers::PreHandlerLogLayer;
-use picoserve::response::{ErrorWithStatusCode, Response, StatusCode};
-use picoserve::{AppRouter, AppWithStateBuilder, response::IntoResponse, routing::PathRouter};
+use picoserve::{
+    AppRouter, AppWithStateBuilder,
+    response::{ErrorWithStatusCode, IntoResponse, Response, StatusCode},
+    routing::PathRouter,
+};
+
+use crate::{SharedStorage, WEB_TASK_POOL_SIZE, error::Error, panel::Panel};
 
 /// Shared reference to the Panel instance
 // pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel>;

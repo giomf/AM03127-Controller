@@ -1,5 +1,6 @@
-use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, DEFAULT_SCHEDULE};
 use core::fmt::Display;
+
+use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, DEFAULT_SCHEDULE};
 
 /// Command to delete all pages and schedules from the LED panel
 pub struct DeleteAll {}

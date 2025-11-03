@@ -1,4 +1,6 @@
 extern crate alloc;
+use alloc::vec::Vec;
+
 use crate::{
     SharedStorage, SharedUart,
     am03127::{
@@ -15,7 +17,6 @@ use crate::{
         SCHEDULE_STORAGE_SIZE,
     },
 };
-use alloc::vec::Vec;
 
 /// Logger name for panel-related log messages
 const LOGGER_NAME: &str = "Panel";

@@ -10,7 +10,6 @@ mod server;
 mod storage;
 mod uart;
 
-use crate::clock::timing_task;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -31,6 +30,8 @@ use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, make_static};
 use server::{AppProps, AppState, web_task};
 use uart::Uart;
+
+use crate::clock::timing_task;
 
 const WEB_TASK_POOL_SIZE: usize = 2;
 // Webtask poolsize + sntp socket + one extra

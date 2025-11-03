@@ -1,6 +1,5 @@
 extern crate alloc;
 
-use crate::error::Error;
 use embassy_time::{Duration, with_timeout};
 use embedded_io_async::Write;
 use esp_hal::{
@@ -9,6 +8,8 @@ use esp_hal::{
     peripherals::UART1,
     uart::{Config, DataBits, Parity, Uart as UartDriver},
 };
+
+use crate::error::Error;
 
 /// Baud rate for UART communication with the LED panel
 const BAUD_RATE: u32 = 9600;

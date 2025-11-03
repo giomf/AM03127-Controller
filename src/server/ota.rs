@@ -1,10 +1,11 @@
-use crate::server::AppState;
 use embedded_storage::nor_flash::NorFlash;
 use esp_bootloader_esp_idf::ota_updater::OtaUpdater;
 use picoserve::{
     io::Read,
     response::{Response, StatusCode},
 };
+
+use crate::server::AppState;
 
 const LOGGER_NAME: &str = "OTA";
 const OTA_BUFFER_SIZE: usize = 1024;

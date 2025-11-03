@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
-use super::CommandAble;
 use core::fmt::Display;
+
 use serde::{Deserialize, Serialize};
+
+use super::CommandAble;
 
 /// Represents a date and time for the LED panel's real-time clock
 ///

@@ -1,16 +1,18 @@
 extern crate alloc;
-use crate::{
-    SharedStorage,
-    am03127::{page_content::Page, schedule::Schedule},
-    error::Error,
-};
 use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
+
 use embassy_embedded_hal::adapter::BlockingAsync;
 use sequential_storage::{
     cache::NoCache,
     erase_all,
     map::{self, SerializationError, Value},
+};
+
+use crate::{
+    SharedStorage,
+    am03127::{page_content::Page, schedule::Schedule},
+    error::Error,
 };
 
 /// Logger name for storage-related log messages

@@ -1,12 +1,14 @@
 use core::net::SocketAddr;
-use embassy_net::Stack as NetworkStack;
-use embassy_net::udp::{PacketMetadata, UdpSocket};
+
+use embassy_net::{
+    Stack as NetworkStack,
+    udp::{PacketMetadata, UdpSocket},
+};
 use embassy_time::{Duration, Timer};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
 use time::OffsetDateTime;
 
-use crate::am03127::realtime_clock::DateTime;
-use crate::panel::Panel;
+use crate::{am03127::realtime_clock::DateTime, panel::Panel};
 // use crate::server::SharedPanel;
 
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];

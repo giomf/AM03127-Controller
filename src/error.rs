@@ -4,6 +4,7 @@ use alloc::{
     string::{String, ToString},
 };
 use core::fmt::Display;
+
 use esp_storage::FlashStorageError;
 
 /// Error types for the application

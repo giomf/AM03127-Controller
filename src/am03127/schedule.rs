@@ -1,8 +1,10 @@
 extern crate alloc;
-use super::CommandAble;
 use alloc::string::String;
 use core::fmt::Display;
+
 use serde::{Deserialize, Serialize};
+
+use super::CommandAble;
 
 /// Represents a schedule for displaying pages on the LED panel
 ///
