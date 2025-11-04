@@ -53,8 +53,7 @@ impl AppWithStateBuilder for AppProps {
     /// # Returns
     /// * A router configured with all the application's routes
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
-        picoserve::Router::new()
-            .nest("/", routers::static_router())
+        let router = picoserve::Router::new()
             .nest("/page", routers::page_router())
             .nest("/pages", routers::pages_router())
             .nest("/schedule", routers::schedule_router())
@@ -62,7 +61,12 @@ impl AppWithStateBuilder for AppProps {
             .nest("/clock", routers::clock_router())
             .nest("/reset", routers::delete_all_router())
             .nest("/ota", routers::ota_router())
-            .layer(PreHandlerLogLayer)
+            .layer(PreHandlerLogLayer);
+
+        #[cfg(feature = "web_interface")]
+        let router = router.nest("/", routers::static_router());
+
+        router
     }
 }
 

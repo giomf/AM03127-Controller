@@ -1,7 +1,9 @@
 use am03127::{page::Page, realtime_clock::DateTime, schedule::Schedule};
+#[cfg(feature = "web_interface")]
+use picoserve::routing::get_service;
 use picoserve::{
     extract::{Json, State},
-    routing::{PathRouter, get, get_service, parse_path_segment, post, put_service},
+    routing::{PathRouter, get, parse_path_segment, post, put_service},
 };
 
 use super::AppState;
@@ -20,6 +22,7 @@ const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
 ///
 /// # Returns
 /// * A router that serves static content
+#[cfg(feature = "web_interface")]
 pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
     picoserve::Router::new().route(
         "",
