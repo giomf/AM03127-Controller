@@ -61,5 +61,6 @@ time = { version = "0.3.44", default-features = false }
 
 
 [features]
-default = [ "web_interface" ]
+default = [ "web_interface", "sntp" ]
 web_interface = []
+sntp = []
