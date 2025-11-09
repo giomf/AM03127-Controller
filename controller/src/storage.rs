@@ -1,5 +1,5 @@
 extern crate alloc;
-use alloc::vec::Vec;
+use alloc::{collections::btree_map::BTreeMap, vec::Vec};
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 
 use am03127::{page::Page, schedule::Schedule};
@@ -210,13 +210,12 @@ impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<T, 
         )
         .await?;
 
-        let mut values = Vec::new();
-        while let Some((_, item)) = item_iterator.next::<Option<T>>(&mut data_buffer).await? {
-            if let Some(valid_item) = item {
-                values.push(valid_item);
-            }
+        let mut values = BTreeMap::new();
+        while let Some((key, item)) = item_iterator.next::<Option<T>>(&mut data_buffer).await? {
+            values.insert(key, item);
         }
-        Ok(values)
+
+        Ok(values.into_values().flatten().collect())
     }
 
     /// Writes an item to storage
