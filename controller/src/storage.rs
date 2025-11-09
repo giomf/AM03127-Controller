@@ -9,7 +9,7 @@ use sequential_storage::{
     erase_all,
     map::{self, SerializationError, Value},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{SharedStorage, error::Error};
 
@@ -24,7 +24,7 @@ pub const SCHEDULE_STORAGE_BEGIN: u32 = 0xc000;
 /// Size of the schedule storage area in flash memory
 pub const SCHEDULE_STORAGE_SIZE: u32 = 0x3000;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PageWrapper(pub Page);
 impl From<Page> for PageWrapper {
     fn from(page: Page) -> Self {
@@ -32,7 +32,7 @@ impl From<Page> for PageWrapper {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScheduleWrapper(pub Schedule);
 impl From<Schedule> for ScheduleWrapper {
     fn from(schedule: Schedule) -> Self {
@@ -51,10 +51,10 @@ impl<'a> Value<'a> for PageWrapper {
     /// * `Ok(usize)` - The number of bytes written
     /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
-        if buffer.len() < core::mem::size_of::<Page>() {
+        if buffer.len() < core::mem::size_of::<PageWrapper>() {
             return Err(SerializationError::BufferTooSmall);
         }
-        match postcard::to_slice(&self.0, buffer) {
+        match postcard::to_slice(&self, buffer) {
             Ok(used) => Ok(used.len()),
             Err(_) => Err(SerializationError::InvalidData),
         }
@@ -72,8 +72,8 @@ impl<'a> Value<'a> for PageWrapper {
     where
         Self: Sized,
     {
-        match postcard::from_bytes::<Page>(&buffer) {
-            Ok(page) => Ok(page.into()),
+        match postcard::from_bytes::<PageWrapper>(&buffer) {
+            Ok(page) => Ok(page),
             Err(_) => Err(SerializationError::InvalidData),
         }
     }
@@ -90,10 +90,10 @@ impl<'a> Value<'a> for ScheduleWrapper {
     /// * `Ok(usize)` - The number of bytes written
     /// * `Err(SerializationError)` - If serialization failed
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, map::SerializationError> {
-        if buffer.len() < core::mem::size_of::<Schedule>() {
+        if buffer.len() < core::mem::size_of::<ScheduleWrapper>() {
             return Err(SerializationError::BufferTooSmall);
         }
-        match postcard::to_slice(&self.0, buffer) {
+        match postcard::to_slice(&self, buffer) {
             Ok(used) => Ok(used.len()),
             Err(_) => Err(SerializationError::InvalidData),
         }
@@ -111,8 +111,8 @@ impl<'a> Value<'a> for ScheduleWrapper {
     where
         Self: Sized,
     {
-        match postcard::from_bytes::<Schedule>(&buffer) {
-            Ok(schedule) => Ok(schedule.into()),
+        match postcard::from_bytes::<ScheduleWrapper>(&buffer) {
+            Ok(schedule) => Ok(schedule),
             Err(_) => Err(SerializationError::InvalidData),
         }
     }
@@ -167,7 +167,7 @@ impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<T, 
         let flash = &mut *self.flash.lock().await;
         let mut flash = BlockingAsync::new(flash);
 
-        let page = map::fetch_item::<u8, Option<T>, _>(
+        let value = map::fetch_item::<u8, Option<T>, _>(
             &mut flash,
             self.flash_range.clone(),
             &mut NoCache::new(),
@@ -176,10 +176,10 @@ impl<T: for<'a> Value<'a> + Clone + Debug, const S: usize> NvsStorageSection<T, 
         )
         .await?;
 
-        match page {
-            Some(page) => {
-                log::debug!("{LOGGER_NAME}: read {:?}", page);
-                Ok(page)
+        match value {
+            Some(value) => {
+                log::debug!("{LOGGER_NAME}: read {:?}", value);
+                Ok(value)
             }
             None => Ok(None),
         }

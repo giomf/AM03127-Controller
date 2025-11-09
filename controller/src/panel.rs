@@ -26,13 +26,15 @@ const DEFAULT_PANEL_ID: u8 = 1;
 /// Size of a key in memory
 const KEY_MEMORY_SIZE: usize = core::mem::size_of::<u8>();
 /// Size of a Page struct in memory
-const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Option<Page>>();
+const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Option<PageWrapper>>();
 /// Size of a Schedule struct in memory
-const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Option<Schedule>>();
+const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Option<ScheduleWrapper>>();
+/// Size of a estimated longest String
+const ESTIMATED_STRING_SIZE: usize = 32;
 /// Total size needed for a page entry (key + data)
-const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE;
+const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE + ESTIMATED_STRING_SIZE;
 /// Total size needed for a schedule entry (key + data)
-const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE;
+const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE + ESTIMATED_STRING_SIZE;
 
 /// Type alias for a collection of pages
 pub type Pages = Vec<Page>;

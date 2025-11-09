@@ -16,7 +16,7 @@ use crate::{
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
 /// Buffer size for JSON deserialization
-const JSON_DESERIALIZE_BUFFER_SIZE: usize = 128;
+const JSON_DESERIALIZE_BUFFER_SIZE: usize = 256;
 
 /// Creates a router for static content
 ///
