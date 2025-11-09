@@ -16,7 +16,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 use esp_alloc as _;
 use esp_backtrace as _;
-use esp_bootloader_esp_idf::esp_app_desc;
+use esp_bootloader_esp_idf::{esp_app_desc, ota_updater::OtaUpdater};
 use esp_hal::{
     clock::CpuClock, interrupt::software::SoftwareInterruptControl, peripherals::WIFI, ram,
     rng::Rng, timer::timg::TimerGroup,
@@ -96,6 +96,12 @@ async fn main(spawner: Spawner) {
             },
         ));
     }
+
+    let mut buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
+    let flash = &mut *shared_storage.lock().await;
+    let mut ota = OtaUpdater::new(flash, &mut buffer).unwrap();
+    let current_partition = ota.selected_partition().unwrap();
+    log::info!("Successfully booted partition: {:?}", current_partition);
 }
 
 fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, WifiDevice<'static>) {
