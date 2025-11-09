@@ -1,3 +1,6 @@
+extern crate alloc;
+use alloc::vec::Vec;
+
 use am03127::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 #[cfg(feature = "web_interface")]
 use picoserve::routing::get_service;
@@ -7,11 +10,7 @@ use picoserve::{
 };
 
 use super::AppState;
-use crate::{
-    error::Error,
-    panel::{Pages, Panel, Schedules},
-    server::ota::OverTheAirUpdate,
-};
+use crate::{error::Error, panel::Panel, server::ota::OverTheAirUpdate};
 
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
@@ -134,7 +133,7 @@ pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
         })
         .post(
             |State(panel): State<&'static Panel>,
-             Json::<Pages, JSON_DESERIALIZE_BUFFER_SIZE>(pages)| async move {
+             Json::<Vec<Page>, JSON_DESERIALIZE_BUFFER_SIZE>(pages)| async move {
                 for page in pages {
                     if let Err(err) = panel.set_page(page.id, page).await {
                         log::error!("{LOGGER_NAME}: {err}");
@@ -232,7 +231,7 @@ pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppSta
         })
         .post(
             |State(panel): State<&'static Panel>,
-             Json::<Schedules, JSON_DESERIALIZE_BUFFER_SIZE>(schedules)| async move {
+             Json::<Vec<Schedule>, JSON_DESERIALIZE_BUFFER_SIZE>(schedules)| async move {
                 for schedule in schedules {
                     if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
                         log::error!("{LOGGER_NAME}: {err}");

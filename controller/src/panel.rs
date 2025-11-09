@@ -36,11 +36,6 @@ const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE + ESTIMATED_ST
 /// Total size needed for a schedule entry (key + data)
 const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE + ESTIMATED_STRING_SIZE;
 
-/// Type alias for a collection of pages
-pub type Pages = Vec<Page>;
-/// Type alias for a collection of schedules
-pub type Schedules = Vec<Schedule>;
-
 /// Main controller for the LED panel
 ///
 /// This struct provides high-level methods to interact with the LED panel,
@@ -97,7 +92,7 @@ impl Panel {
     async fn init_pages(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init pages");
 
-        let pages: Pages = self
+        let pages: Vec<Page> = self
             .page_storage
             .read_all()
             .await?
@@ -116,7 +111,7 @@ impl Panel {
     async fn init_schedules(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init schedules");
 
-        let schedules: Schedules = self
+        let schedules: Vec<Schedule> = self
             .schedule_storage
             .read_all()
             .await?
@@ -191,7 +186,7 @@ impl Panel {
     /// # Returns
     /// * `Ok(Pages)` - A vector of all pages
     /// * `Err(Error)` if retrieving the pages failed
-    pub async fn get_pages(&self) -> Result<Pages, Error> {
+    pub async fn get_pages(&self) -> Result<Vec<Page>, Error> {
         log::info!("{LOGGER_NAME}: Getting pages");
         Ok(self
             .page_storage
@@ -265,7 +260,7 @@ impl Panel {
     /// # Returns
     /// * `Ok(Schedules)` - A vector of all schedules
     /// * `Err(Error)` if retrieving the schedules failed
-    pub async fn get_schedules(&self) -> Result<Schedules, Error> {
+    pub async fn get_schedules(&self) -> Result<Vec<Schedule>, Error> {
         log::info!("{LOGGER_NAME}: Getting schedules");
         Ok(self
             .schedule_storage
