@@ -7,7 +7,7 @@ use embassy_net::{
 };
 use embassy_time::{Duration, Timer};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, macros::offset};
 
 use crate::{PANEL_INIT_DELAY_SECS, panel::Panel};
 
@@ -83,7 +83,8 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
             Ok(result) => {
                 log::info!("{LOGGER_NAME}: Setting curernt date to panel");
                 let timestamp = result.sec();
-                let datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
+                let mut datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
+                datetime = datetime.to_offset(offset!(+1));
                 match panel.set_clock(&DateTimeWrapper::from(datetime)).await {
                     Ok(_) => {
                         log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")
