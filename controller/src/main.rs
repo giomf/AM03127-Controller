@@ -43,6 +43,8 @@ const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1 + 1;
 const STACK_RESSOURCE_SIZE: usize = WEB_TASK_POOL_SIZE + 1;
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
+const PANEL_INIT_DELAY_SECS: u64 = 10;
+const WIFI_DELAY_SECS: u64 = 5;
 
 pub type SharedUart = &'static Mutex<CriticalSectionRawMutex, Uart<'static>>;
 pub type SharedStorage = &'static Mutex<CriticalSectionRawMutex, FlashStorage<'static>>;
@@ -163,7 +165,7 @@ async fn wifi_task(
                 .wait_for_event(WifiEvent::StaDisconnected)
                 .await;
             log::info!("{LOGGER_NAME}: Wifi disconnected");
-            Timer::after(Duration::from_millis(5000)).await
+            Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await
         }
         if !matches!(wifi_controller.is_started(), Ok(true)) {
             let client_config = ModeConfig::Client(
@@ -193,7 +195,7 @@ async fn wifi_task(
             }
             Err(e) => {
                 log::info!("{LOGGER_NAME}: Failed to connect to wifi: {:?}", e);
-                Timer::after(Duration::from_millis(5000)).await
+                Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await
             }
         }
     }
@@ -208,6 +210,8 @@ async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) -> ! {
 
 #[embassy_executor::task]
 async fn panel_init_task(panel: &'static Panel) {
+    Timer::after(Duration::from_secs(PANEL_INIT_DELAY_SECS)).await;
+
     match panel.init().await {
         Ok(_) => log::info!("Panel initialized"),
         Err(e) => log::error!("Failed to initialize panel. {e}"),

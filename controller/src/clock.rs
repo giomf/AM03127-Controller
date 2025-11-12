@@ -9,12 +9,13 @@ use embassy_time::{Duration, Timer};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
 use time::OffsetDateTime;
 
-use crate::panel::Panel;
+use crate::{PANEL_INIT_DELAY_SECS, panel::Panel};
 
+const CLOCK_INIT_DELAY_SECS: u64 = PANEL_INIT_DELAY_SECS + 5;
+const CLOCK_UPDATE_INTERVAL_SECS: u64 = 86_000;
+const LOGGER_NAME: &str = "Clock";
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];
 const SNTP_PORT: u16 = 123;
-const UPDATE_INTERVAL_SECS: u64 = 86_000;
-const LOGGER_NAME: &str = "Clock";
 
 #[derive(Copy, Clone, Default)]
 struct DummyTimestampGenerator;
@@ -56,7 +57,10 @@ impl Deref for DateTimeWrapper {
 
 #[embassy_executor::task]
 pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static Panel) {
-    log::info!("{LOGGER_NAME}: Start clock task. Executing every {UPDATE_INTERVAL_SECS} seconds.");
+    log::info!(
+        "{LOGGER_NAME}: Start clock task. Executing every {CLOCK_UPDATE_INTERVAL_SECS} seconds."
+    );
+    Timer::after(Duration::from_secs(CLOCK_INIT_DELAY_SECS)).await;
     let mut rx_meta = [PacketMetadata::EMPTY; 16];
     let mut rx_buffer = [0; 4096];
     let mut tx_meta = [PacketMetadata::EMPTY; 16];
@@ -91,6 +95,6 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
             }
             Err(e) => log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e),
         };
-        Timer::after(Duration::from_secs(UPDATE_INTERVAL_SECS)).await;
+        Timer::after(Duration::from_secs(CLOCK_UPDATE_INTERVAL_SECS)).await;
     }
 }
