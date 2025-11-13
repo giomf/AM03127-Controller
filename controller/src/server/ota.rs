@@ -8,7 +8,8 @@ use picoserve::{
 use crate::server::AppState;
 
 const LOGGER_NAME: &str = "OTA";
-const OTA_BUFFER_SIZE: usize = 1024;
+const OTA_BUFFER_SIZE: usize = 4096;
+const ALIGNMENT: usize = 4;
 
 pub struct OverTheAirUpdate;
 
@@ -45,9 +46,9 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
         }
 
         let flash = &mut *state.storage.lock().await;
-        let mut buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
+        let mut pt_buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
 
-        let mut ota = OtaUpdater::new(flash, &mut buffer).unwrap();
+        let mut ota = OtaUpdater::new(flash, &mut pt_buffer).unwrap();
         let current_partition = ota.selected_partition().unwrap();
         log::info!(
             "{LOGGER_NAME}: Currently selected partition {:?}",
@@ -68,26 +69,64 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
             return response_writer.write_response(connection, response).await;
         }
 
-        log::info!("Flashing image to {:?}", target_partition_type);
-        let mut buffer = [0u8; OTA_BUFFER_SIZE];
+        log::info!(
+            "{LOGGER_NAME}: Flashing image to {:?}",
+            target_partition_type
+        );
+        let mut body_buffer = [0u8; OTA_BUFFER_SIZE];
+        let mut write_buffer = [0u8; OTA_BUFFER_SIZE];
         let mut bytes_written: usize = 0;
         let mut last_printed_percent = 0;
+        let mut write_buffer_pos = 0;
 
         log::info!("{LOGGER_NAME}: Update status 0%");
         loop {
-            match body_reader.read(&mut buffer).await {
-                Ok(0) => break,
+            match body_reader.read(&mut body_buffer).await {
+                Ok(0) => {
+                    // Write any remaining data
+                    if write_buffer_pos > 0 {
+                        // Check if firmware size is aligned
+                        if write_buffer_pos % ALIGNMENT != 0 {
+                            log::error!(
+                                "{LOGGER_NAME}: Firmware size not aligned to 4 bytes! Size: {}",
+                                write_buffer_pos
+                            );
+                        }
+                        target_partition
+                            .write(bytes_written as u32, &write_buffer[..write_buffer_pos])
+                            .unwrap();
+                        bytes_written += write_buffer_pos;
+                    }
+                    break;
+                }
                 Ok(bytes_read) => {
-                    target_partition
-                        .write(bytes_written as u32, &buffer[..bytes_read])
-                        .unwrap();
-                    bytes_written += bytes_read;
+                    // Copy new data into write_buffer
+                    write_buffer[write_buffer_pos..write_buffer_pos + bytes_read]
+                        .copy_from_slice(&body_buffer[..bytes_read]);
+                    write_buffer_pos += bytes_read;
 
-                    let current_percent =
-                        (bytes_written as f32 / content_length as f32 * 100.0) as u32;
-                    if current_percent >= last_printed_percent + 10 {
-                        log::info!("{LOGGER_NAME}: Update status {}%", current_percent);
-                        last_printed_percent = current_percent;
+                    // Write as much as possible in 4-byte aligned chunks
+                    let writable_size = (write_buffer_pos / ALIGNMENT) * ALIGNMENT;
+
+                    if writable_size > 0 {
+                        target_partition
+                            .write(bytes_written as u32, &write_buffer[..writable_size])
+                            .unwrap();
+                        bytes_written += writable_size;
+
+                        // Move remaining unaligned bytes to the start of buffer
+                        let remainder = write_buffer_pos - writable_size;
+                        if remainder > 0 {
+                            write_buffer.copy_within(writable_size..write_buffer_pos, 0);
+                        }
+                        write_buffer_pos = remainder;
+
+                        let current_percent =
+                            (bytes_written as f32 / content_length as f32 * 100.0) as u32;
+                        if current_percent >= last_printed_percent + 10 {
+                            log::info!("{LOGGER_NAME}: Update status {}%", current_percent);
+                            last_printed_percent = current_percent;
+                        }
                     }
                 }
                 Err(err) => log::error!("{LOGGER_NAME}: Failed reading image: {:?}", err),
