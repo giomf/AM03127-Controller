@@ -9,13 +9,17 @@ This project provides a controller for AM03127 LED panels using an ESP32-C3 micr
 - Create and manage schedules for automated content display
 - Set and display the panel's internal clock
 - RESTful API for programmatic control
-- Web interface for easy management
+- Web interface for easy management and OTA updates
 
 ## Hardware Requirements
 
 - ESP32-C3 microcontroller
 - AM03127 LED panel
 - RS232 interface between ESP32-C3 and LED panel
+
+## PCB Design
+
+A custom PCB has been designed for this project. All PCB-related files, including schematics, board layouts, and manufacturing files, can be found in the [PCB](PCB/) folder.
 
 ## Software Architecture
 
@@ -28,32 +32,4 @@ The project is built with Rust and uses the following components:
 
 ## API Documentation
 
-The REST API documentation is available in OpenAPI format:
-
-- [OpenAPI Specification](docs/openapi.yaml)
-- [HTML Documentation](docs/openapi.html)
-
-## API Endpoints
-
-### Pages
-
-- `GET /page/{pageId}` - Get a specific page
-- `POST /page/{pageId}` - Create or update a page
-- `DELETE /page/{pageId}` - Delete a page
-- `GET /pages` - Get all pages
-
-### Schedules
-
-- `GET /schedule/{scheduleId}` - Get a specific schedule
-- `POST /schedule/{scheduleId}` - Create or update a schedule
-- `DELETE /schedule/{scheduleId}` - Delete a schedule
-- `GET /schedules` - Get all schedules
-
-### Clock
-
-- `GET /clock` - Display clock on panel
-- `POST /clock` - Set panel clock
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
+The REST API documentation is available as [OpenAPI Specification](docs/openapi.yaml)
