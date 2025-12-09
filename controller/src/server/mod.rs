@@ -12,29 +12,26 @@ use picoserve::{
 
 use crate::{SharedStorage, WEB_TASK_POOL_SIZE, error::Error, panel::Panel};
 
-/// Shared reference to the Panel instance
-// pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel>;
-
 /// Application state for the web server
 ///
 /// This struct contains all the state needed by the web server,
-/// including a shared reference to the Panel instance.
+/// including shared references to the Panel instance and flash storage.
 #[derive(Clone)]
 pub struct AppState {
     /// Shared reference to the Panel instance
     pub panel: &'static Panel,
-    /// Shared reference to the Panel instance
+    /// Shared reference to the flash storage
     pub storage: SharedStorage,
 }
 
 impl picoserve::extract::FromRef<AppState> for &Panel {
-    /// Extracts a SharedPanel from an AppState
+    /// Extracts a Panel reference from an AppState
     ///
     /// # Arguments
     /// * `state` - The AppState to extract from
     ///
     /// # Returns
-    /// * The SharedPanel from the AppState
+    /// * The Panel reference from the AppState
     fn from_ref(state: &AppState) -> Self {
         state.panel
     }
@@ -115,11 +112,11 @@ impl IntoResponse for Error {
 /// This task runs the web server that handles HTTP requests.
 ///
 /// # Arguments
-/// * `id` - Task ID
-/// * `stack` - Network stack
-/// * `app` - Web application router
-/// * `config` - Web server configuration
-/// * `state` - Application state
+/// * `id` - Task ID for identifying this web task instance
+/// * `stack` - Network stack for TCP/IP communication
+/// * `app` - Web application router containing all route handlers
+/// * `config` - Web server configuration including timeouts
+/// * `state` - Application state shared across all request handlers
 #[embassy_executor::task(pool_size = WEB_TASK_POOL_SIZE)]
 pub async fn web_task(
     id: usize,

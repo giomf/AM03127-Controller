@@ -57,7 +57,7 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
 
         let (mut target_partition, target_partition_type) = ota.next_partition().unwrap();
         log::info!(
-            "{LOGGER_NAME}: Selecting nexdt ota partition {:?}",
+            "{LOGGER_NAME}: Selecting next ota partition {:?}",
             target_partition_type
         );
         if content_length > target_partition.partition_size() {

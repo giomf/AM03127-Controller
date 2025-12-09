@@ -53,7 +53,8 @@ impl Panel {
     /// Creates a new Panel instance
     ///
     /// # Arguments
-    /// * `uart` - UART interface for communicating with the LED panel
+    /// * `uart` - Shared UART interface for communicating with the LED panel
+    /// * `flash_storage` - Shared flash storage for persisting pages and schedules
     ///
     /// # Returns
     /// * A new Panel instance with initialized storage
@@ -77,6 +78,9 @@ impl Panel {
 
     /// Initializes the LED panel
     ///
+    /// Sets the panel ID and restores all previously saved pages and schedules
+    /// from flash storage to the panel.
+    ///
     /// # Returns
     /// * `Ok(())` if initialization was successful
     /// * `Err(Error)` if initialization failed
@@ -89,6 +93,11 @@ impl Panel {
         Ok(())
     }
 
+    /// Initializes pages by loading them from storage and sending to the panel
+    ///
+    /// # Returns
+    /// * `Ok(())` if all pages were initialized successfully
+    /// * `Err(Error)` if initialization failed
     async fn init_pages(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init pages");
 
@@ -108,6 +117,11 @@ impl Panel {
         Ok(())
     }
 
+    /// Initializes schedules by loading them from storage and sending to the panel
+    ///
+    /// # Returns
+    /// * `Ok(())` if all schedules were initialized successfully
+    /// * `Err(Error)` if initialization failed
     async fn init_schedules(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Init schedules");
 
@@ -145,8 +159,10 @@ impl Panel {
 
     /// Sets a page on the panel
     ///
+    /// Sends the page to the LED panel and persists it to flash storage.
+    ///
     /// # Arguments
-    /// * `page_id` - The ID of the page to set
+    /// * `page_id` - The ID of the page to set (A-Z)
     /// * `page` - The page content
     ///
     /// # Returns
@@ -167,7 +183,7 @@ impl Panel {
     /// Retrieves a page from storage
     ///
     /// # Arguments
-    /// * `page_id` - The ID of the page to retrieve
+    /// * `page_id` - The ID of the page to retrieve (A-Z)
     ///
     /// # Returns
     /// * `Ok(Some(Page))` if the page was found
@@ -184,7 +200,7 @@ impl Panel {
     /// Retrieves all pages from storage
     ///
     /// # Returns
-    /// * `Ok(Pages)` - A vector of all pages
+    /// * `Ok(Vec<Page>)` - A vector of all stored pages
     /// * `Err(Error)` if retrieving the pages failed
     pub async fn get_pages(&self) -> Result<Vec<Page>, Error> {
         log::info!("{LOGGER_NAME}: Getting pages");
@@ -199,8 +215,10 @@ impl Panel {
 
     /// Deletes a page from the panel and storage
     ///
+    /// Removes the page from both the LED panel and flash storage.
+    ///
     /// # Arguments
-    /// * `page_id` - The ID of the page to delete
+    /// * `page_id` - The ID of the page to delete (A-Z)
     ///
     /// # Returns
     /// * `Ok(())` if the page was deleted successfully
@@ -218,8 +236,10 @@ impl Panel {
 
     /// Sets a schedule on the panel
     ///
+    /// Sends the schedule to the LED panel and persists it to flash storage.
+    ///
     /// # Arguments
-    /// * `schedule_id` - The ID of the schedule to set
+    /// * `schedule_id` - The ID of the schedule to set (A-E)
     /// * `schedule` - The schedule content
     ///
     /// # Returns
@@ -241,7 +261,7 @@ impl Panel {
     /// Retrieves a schedule from storage
     ///
     /// # Arguments
-    /// * `schedule_id` - The ID of the schedule to retrieve
+    /// * `schedule_id` - The ID of the schedule to retrieve (A-E)
     ///
     /// # Returns
     /// * `Ok(Some(Schedule))` if the schedule was found
@@ -258,7 +278,7 @@ impl Panel {
     /// Retrieves all schedules from storage
     ///
     /// # Returns
-    /// * `Ok(Schedules)` - A vector of all schedules
+    /// * `Ok(Vec<Schedule>)` - A vector of all stored schedules
     /// * `Err(Error)` if retrieving the schedules failed
     pub async fn get_schedules(&self) -> Result<Vec<Schedule>, Error> {
         log::info!("{LOGGER_NAME}: Getting schedules");
@@ -273,14 +293,16 @@ impl Panel {
 
     /// Deletes a schedule from the panel and storage
     ///
+    /// Removes the schedule from both the LED panel and flash storage.
+    ///
     /// # Arguments
-    /// * `schedule_id` - The ID of the schedule to delete
+    /// * `schedule_id` - The ID of the schedule to delete (A-E)
     ///
     /// # Returns
     /// * `Ok(())` if the schedule was deleted successfully
     /// * `Err(Error)` if deleting the schedule failed
     pub async fn delete_schedule(&self, schedule_id: char) -> Result<(), Error> {
-        log::info!("{LOGGER_NAME}: Deleting page \"{schedule_id}\"");
+        log::info!("{LOGGER_NAME}: Deleting schedule \"{schedule_id}\"");
 
         let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
         self.uart.lock().await.write(&command).await?;
@@ -289,6 +311,14 @@ impl Panel {
         Ok(())
     }
 
+    /// Deletes all pages and schedules from the panel and storage
+    ///
+    /// Sends a delete all command to the LED panel and erases all
+    /// pages and schedules from flash storage.
+    ///
+    /// # Returns
+    /// * `Ok(())` if all data was deleted successfully
+    /// * `Err(Error)` if deleting failed
     pub async fn delete_all(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Deleting all");
 

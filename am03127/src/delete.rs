@@ -22,6 +22,13 @@ pub struct DeletePage {
 impl CommandAble for DeletePage {}
 
 impl DeletePage {
+    /// Creates a new DeletePage command
+    ///
+    /// # Arguments
+    /// * `id` - The ID of the page to delete (A-Z)
+    ///
+    /// # Returns
+    /// * A new DeletePage instance
     pub fn new(id: char) -> Self {
         DeletePage {
             id,

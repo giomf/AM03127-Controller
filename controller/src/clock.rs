@@ -81,7 +81,7 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
         log::info!("{LOGGER_NAME}: Getting current date");
         match get_time(sntp_address, &socket, context).await {
             Ok(result) => {
-                log::info!("{LOGGER_NAME}: Setting curernt date to panel");
+                log::info!("{LOGGER_NAME}: Setting current date to panel");
                 let timestamp = result.sec();
                 let mut datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
                 datetime = datetime.to_offset(offset!(+1));
