@@ -7,7 +7,7 @@ use embassy_net::{
 };
 use embassy_time::{Duration, Timer};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
-use time::{OffsetDateTime, macros::offset};
+use time::{Date, Month, OffsetDateTime, UtcOffset, macros::offset, util::days_in_month};
 
 use crate::{PANEL_INIT_DELAY_SECS, panel::Panel};
 
@@ -28,6 +28,30 @@ impl NtpTimestampGenerator for DummyTimestampGenerator {
 
     fn timestamp_subsec_micros(&self) -> u32 {
         0
+    }
+}
+
+fn eu_utc_offset(utc: &OffsetDateTime) -> UtcOffset {
+    let last_sunday_of = |month: Month| -> Date {
+        let days_in_month = {
+            let year = utc.year();
+            days_in_month(month, year)
+        };
+        let last = Date::from_calendar_date(utc.year(), month, days_in_month).unwrap();
+        last - time::Duration::days(last.weekday().number_days_from_sunday() as i64)
+    };
+    let dst_start = last_sunday_of(Month::March)
+        .with_hms(1, 0, 0)
+        .unwrap()
+        .assume_utc();
+    let dst_end = last_sunday_of(Month::October)
+        .with_hms(1, 0, 0)
+        .unwrap()
+        .assume_utc();
+    if *utc >= dst_start && *utc < dst_end {
+        offset!(+2) // CEST
+    } else {
+        offset!(+1) // CET
     }
 }
 
@@ -81,17 +105,12 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
         log::info!("{LOGGER_NAME}: Getting current date");
         match get_time(sntp_address, &socket, context).await {
             Ok(result) => {
-                log::info!("{LOGGER_NAME}: Setting current date to panel");
                 let timestamp = result.sec();
                 let mut datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
-                datetime = datetime.to_offset(offset!(+1));
-                match panel.set_clock(&DateTimeWrapper::from(datetime)).await {
-                    Ok(_) => {
-                        log::info!("{LOGGER_NAME}: Updated panel to current date: {datetime}")
-                    }
-                    Err(e) => {
-                        log::error!("{LOGGER_NAME}: Failed to send current date to panel. {e}")
-                    }
+                datetime = datetime.to_offset(eu_utc_offset(&datetime));
+                log::info!("{LOGGER_NAME}: Setting current date to panel: {datetime}");
+                if let Err(e) = panel.set_clock(&DateTimeWrapper::from(datetime)).await {
+                    log::error!("{LOGGER_NAME}: Failed to send current date to panel. {e}");
                 }
             }
             Err(e) => log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e),
