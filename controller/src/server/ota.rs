@@ -74,7 +74,10 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
             target_partition_type
         );
         let mut body_buffer = [0u8; OTA_BUFFER_SIZE];
-        let mut write_buffer = [0u8; OTA_BUFFER_SIZE];
+        // Needs ALIGNMENT - 1 extra bytes: up to (ALIGNMENT - 1) unwritten remainder bytes
+        // from the previous iteration may sit at the front before a full OTA_BUFFER_SIZE read
+        // is appended, so the buffer must be large enough to hold both at the same time.
+        let mut write_buffer = [0u8; OTA_BUFFER_SIZE + ALIGNMENT - 1];
         let mut bytes_written: usize = 0;
         let mut last_printed_percent = 0;
         let mut write_buffer_pos = 0;
