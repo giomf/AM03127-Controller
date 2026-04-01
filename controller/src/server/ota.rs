@@ -182,6 +182,13 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
             }
         };
         let connection = request.body_connection.finalize().await?;
-        response_writer.write_response(connection, response).await
+        let sent = response_writer.write_response(connection, response).await?;
+
+        if ota_result.is_ok() {
+            log::info!("{LOGGER_NAME}: Rebooting into new firmware");
+            esp_hal::system::software_reset()
+        }
+
+        Ok(sent)
     }
 }
