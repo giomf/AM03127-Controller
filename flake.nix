@@ -23,6 +23,7 @@
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
           toolchain
+          pkgs.just
           pkgs.esp-generate
           pkgs.espflash
           pkgs.jre21_minimal
