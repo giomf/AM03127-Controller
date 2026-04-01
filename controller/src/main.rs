@@ -142,7 +142,7 @@ fn init_server() -> (
         ServerConfig::new(picoserve::Timeouts {
             persistent_start_read_request: Duration::from_secs(5),
             start_read_request: Duration::from_secs(5),
-            read_request: Duration::from_secs(2),
+            read_request: Duration::from_secs(60),
             write: Duration::from_secs(2),
         })
         .keep_connection_alive()
