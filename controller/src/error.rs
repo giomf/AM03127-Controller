@@ -1,8 +1,5 @@
 extern crate alloc;
-use alloc::{
-    format,
-    string::{String, ToString},
-};
+use alloc::string::{String, ToString};
 use core::fmt::Display;
 
 use esp_storage::FlashStorageError;

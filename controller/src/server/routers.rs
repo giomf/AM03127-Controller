@@ -3,10 +3,10 @@ use alloc::vec::Vec;
 
 use am03127::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 #[cfg(feature = "web_interface")]
-use picoserve::routing::get_service;
+use picoserve::routing::{MethodHandler, get_service};
 use picoserve::{
     extract::{Json, State},
-    routing::{PathRouter, get, parse_path_segment, post, put_service},
+    routing::{get, post, put_service},
 };
 
 use super::AppState;
@@ -14,42 +14,32 @@ use crate::{error::Error, panel::Panel, server::ota::OverTheAirUpdate};
 
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
-/// Buffer size for JSON deserialization
-const JSON_DESERIALIZE_BUFFER_SIZE: usize = 256;
 
 /// Creates a router for static content
 ///
 /// # Returns
 /// * A router that serves static content
 #[cfg(feature = "web_interface")]
-pub fn static_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        "",
-        get_service(picoserve::response::File::html(include_str!("index.html"))),
-    )
+pub fn static_router() -> impl MethodHandler<AppState> {
+    get_service(picoserve::response::File::html(include_str!("index.html")))
 }
-
 /// Creates a router for clock-related endpoints
 ///
 /// # Returns
 /// * A router that handles clock-related requests
-pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        "",
-        post(
-            |State(panel): State<&'static Panel>,
-             Json::<DateTime, JSON_DESERIALIZE_BUFFER_SIZE>(date_time)| async move {
-                log::info!("{LOGGER_NAME}: Set clock");
+pub fn clock_router() -> impl MethodHandler<AppState> {
+    post(
+        |State(panel): State<&'static Panel>, Json::<DateTime>(date_time)| async move {
+            log::info!("{LOGGER_NAME}: Set clock");
 
-                match panel.set_clock(&date_time).await {
-                    Ok(_) => Ok(()),
-                    Err(err) => {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        Err(err)
-                    }
+            match panel.set_clock(&date_time).await {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    Err(err)
                 }
-            },
-        ),
+            }
+        },
     )
 }
 
@@ -57,61 +47,56 @@ pub fn clock_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> 
 ///
 /// # Returns
 /// * A router that handles requests for individual pages
-pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        ("", parse_path_segment::<char>()),
-        get(
-            |page_id: char, State(panel): State<&'static Panel>| async move {
-                log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
-                if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
-                }
+pub fn page_router() -> impl MethodHandler<AppState, (char,)> {
+    get(
+        |page_id: char, State(panel): State<&'static Panel>| async move {
+            log::info!("{LOGGER_NAME}: Getting page \"{page_id}\"");
+            if !is_page_id_valid(page_id) {
+                return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
+            }
 
-                match panel.get_page(page_id).await {
-                    Ok(Some(page)) => Ok(Json(page)),
-                    Ok(None) => Err(Error::NotFound("Page not found".try_into().unwrap())),
-                    Err(err) => {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        Err(err)
-                    }
+            match panel.get_page(page_id).await {
+                Ok(Some(page)) => Ok(Json(page)),
+                Ok(None) => Err(Error::NotFound("Page not found".try_into().unwrap())),
+                Err(err) => {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    Err(err)
                 }
-            },
-        )
-        .post(
-            |page_id: char,
-             State(panel): State<&'static Panel>,
-             Json::<Page, JSON_DESERIALIZE_BUFFER_SIZE>(page)| async move {
-                log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
-                if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
-                }
-                log::debug!("{LOGGER_NAME}: {:?}", page);
+            }
+        },
+    )
+    .post(
+        |page_id: char, State(panel): State<&'static Panel>, Json::<Page>(page)| async move {
+            log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
+            if !is_page_id_valid(page_id) {
+                return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
+            }
+            log::debug!("{LOGGER_NAME}: {:?}", page);
 
-                match panel.set_page(page_id, page).await {
-                    Ok(_) => Ok(()),
-                    Err(err) => {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        Err(err)
-                    }
+            match panel.set_page(page_id, page).await {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    Err(err)
                 }
-            },
-        )
-        .delete(
-            |page_id: char, State(panel): State<&'static Panel>| async move {
-                if !is_page_id_valid(page_id) {
-                    return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
-                }
-                log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
+            }
+        },
+    )
+    .delete(
+        |page_id: char, State(panel): State<&'static Panel>| async move {
+            if !is_page_id_valid(page_id) {
+                return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
+            }
+            log::info!("{LOGGER_NAME}: Delete page \"{page_id}\"");
 
-                match panel.delete_page(page_id).await {
-                    Ok(_) => Ok(()),
-                    Err(err) => {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        Err(err)
-                    }
+            match panel.delete_page(page_id).await {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    Err(err)
                 }
-            },
-        ),
+            }
+        },
     )
 }
 
@@ -119,41 +104,36 @@ pub fn page_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
 ///
 /// # Returns
 /// * A router that handles requests for all pages
-pub fn pages_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        "",
-        get(|State(panel): State<&'static Panel>| async move {
-            match panel.get_pages().await {
-                Ok(pages) => Ok(Json(pages)),
-                Err(err) => {
+pub fn pages_router() -> impl MethodHandler<AppState> {
+    get(|State(panel): State<&'static Panel>| async move {
+        match panel.get_pages().await {
+            Ok(pages) => Ok(Json(pages)),
+            Err(err) => {
+                log::error!("{LOGGER_NAME}: {err}");
+                Err(err)
+            }
+        }
+    })
+    .post(
+        |State(panel): State<&'static Panel>, Json::<Vec<Page>>(pages)| async move {
+            for page in pages {
+                if let Err(err) = panel.set_page(page.id, page).await {
                     log::error!("{LOGGER_NAME}: {err}");
-                    Err(err)
+                    return Err(err);
                 }
             }
-        })
-        .post(
-            |State(panel): State<&'static Panel>,
-             Json::<Vec<Page>, JSON_DESERIALIZE_BUFFER_SIZE>(pages)| async move {
-                for page in pages {
-                    if let Err(err) = panel.set_page(page.id, page).await {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        return Err(err);
-                    }
-                }
-                Ok(())
-            },
-        ),
+            Ok(())
+        },
     )
 }
 
+//        ("", parse_path_segment::<char>()),
 /// Creates a router for schedule-related endpoints
 ///
 /// # Returns
 /// * A router that handles requests for individual schedules
-pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        ("", parse_path_segment::<char>()),
-        get(
+pub fn schedule_router() -> impl MethodHandler<AppState, (char,)> {
+    get(
             |schedule_id: char, State(panel): State<&'static Panel>| async move {
                 log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
                 if !is_page_id_valid(schedule_id) {
@@ -175,7 +155,7 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
         .post(
             |schedule_id: char,
              State(panel): State<&'static Panel>,
-             Json::<Schedule, JSON_DESERIALIZE_BUFFER_SIZE>(schedule)| async move {
+             Json::<Schedule>(schedule)| async move {
                 log::info!("{LOGGER_NAME}: Setting schedule {schedule_id}");
                 if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest(
@@ -209,7 +189,6 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
                     }
                 }
             },
-        ),
     )
 }
 
@@ -217,49 +196,42 @@ pub fn schedule_router() -> picoserve::Router<impl PathRouter<AppState>, AppStat
 ///
 /// # Returns
 /// * A router that handles requests for all schedules
-pub fn schedules_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        "",
-        get(|State(panel): State<&'static Panel>| async move {
-            match panel.get_schedules().await {
-                Ok(schedules) => Ok(Json(schedules)),
-                Err(err) => {
-                    log::error!("{LOGGER_NAME}: {err}");
-                    Err(err)
-                }
-            }
-        })
-        .post(
-            |State(panel): State<&'static Panel>,
-             Json::<Vec<Schedule>, JSON_DESERIALIZE_BUFFER_SIZE>(schedules)| async move {
-                for schedule in schedules {
-                    if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
-                        log::error!("{LOGGER_NAME}: {err}");
-                        return Err(err);
-                    }
-                }
-
-                Ok(())
-            },
-        ),
-    )
-}
-
-pub fn delete_all_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route(
-        "",
-        post(|State(panel): State<&'static Panel>| async move {
-            if let Err(err) = panel.delete_all().await {
+pub fn schedules_router() -> impl MethodHandler<AppState> {
+    get(|State(panel): State<&'static Panel>| async move {
+        match panel.get_schedules().await {
+            Ok(schedules) => Ok(Json(schedules)),
+            Err(err) => {
                 log::error!("{LOGGER_NAME}: {err}");
-                return Err(err);
+                Err(err)
+            }
+        }
+    })
+    .post(
+        |State(panel): State<&'static Panel>, Json::<Vec<Schedule>>(schedules)| async move {
+            for schedule in schedules {
+                if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
+                    log::error!("{LOGGER_NAME}: {err}");
+                    return Err(err);
+                }
             }
 
             Ok(())
-        }),
+        },
     )
 }
-pub fn ota_router() -> picoserve::Router<impl PathRouter<AppState>, AppState> {
-    picoserve::Router::new().route("", put_service(OverTheAirUpdate))
+
+pub fn delete_all_router() -> impl MethodHandler<AppState> {
+    post(|State(panel): State<&'static Panel>| async move {
+        if let Err(err) = panel.delete_all().await {
+            log::error!("{LOGGER_NAME}: {err}");
+            return Err(err);
+        }
+
+        Ok(())
+    })
+}
+pub fn ota_router() -> impl MethodHandler<AppState> {
+    put_service(OverTheAirUpdate)
 }
 
 /// Checks if an ID is valid (A-Z)

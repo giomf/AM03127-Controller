@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
@@ -28,7 +29,7 @@ use esp_radio::{
 use esp_storage::FlashStorage;
 use panel::Panel;
 use picoserve::{AppRouter, AppWithStateBuilder, Config as ServerConfig, Router, make_static};
-use server::{AppProps, AppState, web_task};
+use server::{AppState, ServerProperties, web_task};
 use uart::Uart;
 
 #[cfg(feature = "sntp")]
@@ -132,17 +133,17 @@ fn init_network(
 }
 
 fn init_server() -> (
-    &'static mut Router<<AppProps as AppWithStateBuilder>::PathRouter, AppState>,
-    &'static mut ServerConfig<Duration>,
+    &'static mut Router<<ServerProperties as AppWithStateBuilder>::PathRouter, AppState>,
+    &'static mut ServerConfig,
 ) {
-    let server_app = make_static!(AppRouter<AppProps>, AppProps.build_app());
+    let server_app = make_static!(AppRouter<ServerProperties>, ServerProperties.build_app());
     let server_config = make_static!(
-        ServerConfig<Duration>,
+        ServerConfig,
         ServerConfig::new(picoserve::Timeouts {
-            persistent_start_read_request: Some(Duration::from_secs(5)),
-            start_read_request: Some(Duration::from_secs(5)),
-            read_request: Some(Duration::from_secs(2)),
-            write: Some(Duration::from_secs(2)),
+            persistent_start_read_request: Duration::from_secs(5),
+            start_read_request: Duration::from_secs(5),
+            read_request: Duration::from_secs(2),
+            write: Duration::from_secs(2),
         })
         .keep_connection_alive()
     );

@@ -2,46 +2,46 @@ mod layers;
 mod ota;
 mod routers;
 
-use embassy_time::Duration;
 use layers::PreHandlerLogLayer;
 use picoserve::{
     AppRouter, AppWithStateBuilder,
     response::{ErrorWithStatusCode, IntoResponse, Response, StatusCode},
-    routing::PathRouter,
+    routing::{PathRouter, parse_path_segment},
 };
 
 use crate::{SharedStorage, WEB_TASK_POOL_SIZE, error::Error, panel::Panel};
 
+/// Shared reference to the Panel instance
+// pub type SharedPanel = &'static Mutex<CriticalSectionRawMutex, Panel>;
+
 /// Application state for the web server
 ///
 /// This struct contains all the state needed by the web server,
-/// including shared references to the Panel instance and flash storage.
-#[derive(Clone)]
+/// including a shared reference to the Panel instance.
 pub struct AppState {
     /// Shared reference to the Panel instance
     pub panel: &'static Panel,
-    /// Shared reference to the flash storage
+    /// Shared reference to the Panel instance
     pub storage: SharedStorage,
 }
 
 impl picoserve::extract::FromRef<AppState> for &Panel {
-    /// Extracts a Panel reference from an AppState
+    /// Extracts a SharedPanel from an AppState
     ///
     /// # Arguments
     /// * `state` - The AppState to extract from
     ///
     /// # Returns
-    /// * The Panel reference from the AppState
+    /// * The SharedPanel from the AppState
     fn from_ref(state: &AppState) -> Self {
         state.panel
     }
 }
 
 /// Properties for building the web application
-#[derive(Debug, Clone, Default)]
-pub struct AppProps;
+pub struct ServerProperties;
 
-impl AppWithStateBuilder for AppProps {
+impl AppWithStateBuilder for ServerProperties {
     type State = AppState;
     type PathRouter = impl PathRouter<AppState>;
 
@@ -51,17 +51,23 @@ impl AppWithStateBuilder for AppProps {
     /// * A router configured with all the application's routes
     fn build_app(self) -> picoserve::Router<Self::PathRouter, Self::State> {
         let router = picoserve::Router::new()
-            .nest("/page", routers::page_router())
-            .nest("/pages", routers::pages_router())
-            .nest("/schedule", routers::schedule_router())
-            .nest("/schedules", routers::schedules_router())
-            .nest("/clock", routers::clock_router())
-            .nest("/reset", routers::delete_all_router())
-            .nest("/ota", routers::ota_router())
+            .route(
+                ("/page", parse_path_segment::<char>()),
+                routers::page_router(),
+            )
+            .route("/pages", routers::pages_router())
+            .route(
+                ("/schedule", parse_path_segment::<char>()),
+                routers::schedule_router(),
+            )
+            .route("/schedules", routers::schedules_router())
+            .route("/clock", routers::clock_router())
+            .route("/reset", routers::delete_all_router())
+            .route("/ota", routers::ota_router())
             .layer(PreHandlerLogLayer);
 
         #[cfg(feature = "web_interface")]
-        let router = router.nest("/", routers::static_router());
+        let router = router.route("/", routers::static_router());
 
         router
     }
@@ -112,17 +118,17 @@ impl IntoResponse for Error {
 /// This task runs the web server that handles HTTP requests.
 ///
 /// # Arguments
-/// * `id` - Task ID for identifying this web task instance
-/// * `stack` - Network stack for TCP/IP communication
-/// * `app` - Web application router containing all route handlers
-/// * `config` - Web server configuration including timeouts
-/// * `state` - Application state shared across all request handlers
+/// * `id` - Task ID
+/// * `stack` - Network stack
+/// * `app` - Web application router
+/// * `config` - Web server configuration
+/// * `state` - Application state
 #[embassy_executor::task(pool_size = WEB_TASK_POOL_SIZE)]
 pub async fn web_task(
     id: usize,
     stack: embassy_net::Stack<'static>,
-    app: &'static AppRouter<AppProps>,
-    config: &'static picoserve::Config<Duration>,
+    server_properties: &'static AppRouter<ServerProperties>,
+    config: &'static picoserve::Config,
     state: AppState,
 ) -> ! {
     log::info!("Server: Starting webserver listener {id}");
@@ -131,16 +137,12 @@ pub async fn web_task(
     let mut tcp_tx_buffer = [0; 1024];
     let mut http_buffer = [0; 2048];
 
-    picoserve::listen_and_serve_with_state(
-        id,
-        app,
+    picoserve::Server::new(
+        &server_properties.shared().with_state(&state),
         config,
-        stack,
-        port,
-        &mut tcp_rx_buffer,
-        &mut tcp_tx_buffer,
         &mut http_buffer,
-        &state,
     )
+    .listen_and_serve(id, stack, port, &mut tcp_rx_buffer, &mut tcp_tx_buffer)
     .await
+    .into_never()
 }
