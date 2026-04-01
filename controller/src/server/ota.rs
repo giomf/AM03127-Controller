@@ -81,6 +81,7 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
         let mut bytes_written: usize = 0;
         let mut last_printed_percent = 0;
         let mut write_buffer_pos = 0;
+        let mut read_error = false;
 
         log::info!("{LOGGER_NAME}: Update status 0%");
         loop {
@@ -132,10 +133,19 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
                         }
                     }
                 }
-                Err(err) => log::error!("{LOGGER_NAME}: Failed reading image: {:?}", err),
+                Err(err) => {
+                    log::error!("{LOGGER_NAME}: Failed reading image: {:?}", err);
+                    read_error = true;
+                    break;
+                }
             }
         }
-        let response = if bytes_written != content_length {
+        let response = if read_error {
+            Response::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed reading firmware body",
+            )
+        } else if bytes_written != content_length {
             Response::new(StatusCode::BAD_REQUEST, "Could not read whole body")
         } else {
             log::info!(
@@ -146,7 +156,7 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
             ota.set_current_ota_state(esp_bootloader_esp_idf::ota::OtaImageState::New)
                 .unwrap();
 
-            Response::new(StatusCode::OK, "Update successfull")
+            Response::new(StatusCode::OK, "Update successful")
         };
         let connection = request.body_connection.finalize().await?;
         response_writer.write_response(connection, response).await
