@@ -1,0 +1,7 @@
+[[panels]]
+name = "Reception"
+address = "192.168.1.10"
+
+[[panels]]
+name = "Lobby"
+address = "192.168.1.11"
