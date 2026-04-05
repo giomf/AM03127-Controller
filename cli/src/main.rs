@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod console;
 
 use std::path::PathBuf;
 
