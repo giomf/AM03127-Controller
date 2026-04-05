@@ -27,6 +27,14 @@ enum Commands {
         #[arg(short, long, value_delimiter = ',')]
         panels: Vec<String>,
     },
+    /// Upload a firmware binary to panels via OTA
+    Update {
+        /// Path to the firmware .bin file
+        firmware: PathBuf,
+        /// Panels to target, comma-separated (default: all)
+        #[arg(short, long, value_delimiter = ',')]
+        panels: Vec<String>,
+    },
 }
 
 #[tokio::main]
@@ -46,6 +54,10 @@ async fn run() -> Result<()> {
         Commands::Status { panels } => {
             let targets = config.select_panels(&panels)?;
             commands::status::run(&targets).await?;
+        }
+        Commands::Update { firmware, panels } => {
+            let targets = config.select_panels(&panels)?;
+            commands::update::run(&targets, &firmware).await?;
         }
     }
 

@@ -15,6 +15,7 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
         let client = client.clone();
         let name = panel.name.clone();
         let url = format!("http://{}", panel.address);
+        dbg!(&url);
         let pb = spinners.add(&name);
         set.spawn(async move {
             let reachable = client.get(&url).send().await.is_ok();
