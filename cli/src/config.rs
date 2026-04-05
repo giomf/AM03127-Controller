@@ -19,4 +19,26 @@ impl Config {
         let config = toml::from_str(&contents)?;
         Ok(config)
     }
+
+    pub fn select_panels<'a>(&'a self, names: &[String]) -> Result<Vec<&'a Panel>, Vec<String>> {
+        if names.is_empty() {
+            return Ok(self.panels.iter().collect());
+        }
+
+        let unknown: Vec<String> = names
+            .iter()
+            .filter(|n| !self.panels.iter().any(|p| p.name.eq_ignore_ascii_case(n)))
+            .cloned()
+            .collect();
+
+        if !unknown.is_empty() {
+            return Err(unknown);
+        }
+
+        Ok(self
+            .panels
+            .iter()
+            .filter(|p| names.iter().any(|n| n.eq_ignore_ascii_case(&p.name)))
+            .collect())
+    }
 }

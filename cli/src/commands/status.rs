@@ -1,10 +1,10 @@
-use crate::config::Config;
+use crate::config::Panel;
 
-pub async fn run(config: &Config) {
+pub async fn run(panels: &[&Panel]) {
     let client = reqwest::Client::new();
     let mut set = tokio::task::JoinSet::new();
 
-    for panel in &config.panels {
+    for panel in panels {
         let client = client.clone();
         let name = panel.name.clone();
         let url = format!("http://{}", panel.address);

@@ -20,7 +20,11 @@ struct Args {
 #[derive(Subcommand)]
 enum Commands {
     /// Check connectivity status of all panels
-    Status,
+    Status {
+        /// Panels to target, comma-separated (default: all)
+        #[arg(short, long, value_delimiter = ',')]
+        panels: Vec<String>,
+    },
 }
 
 #[tokio::main]
@@ -33,6 +37,12 @@ async fn main() {
     });
 
     match args.command {
-        Commands::Status => commands::status::run(&config).await,
+        Commands::Status { panels } => {
+            let targets = config.select_panels(&panels).unwrap_or_else(|unknown| {
+                eprintln!("Unknown panel(s): {}", unknown.join(", "));
+                std::process::exit(1);
+            });
+            commands::status::run(&targets).await;
+        }
     }
 }
