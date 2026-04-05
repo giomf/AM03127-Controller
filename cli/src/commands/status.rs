@@ -1,6 +1,8 @@
+use anyhow::{Context, Result};
+
 use crate::config::Panel;
 
-pub async fn run(panels: &[&Panel]) {
+pub async fn run(panels: &[&Panel]) -> Result<()> {
     let client = reqwest::Client::new();
     let mut set = tokio::task::JoinSet::new();
 
@@ -15,10 +17,13 @@ pub async fn run(panels: &[&Panel]) {
     }
 
     while let Some(res) = set.join_next().await {
-        match res {
-            Ok((name, true)) => println!("{name}: online"),
-            Ok((name, false)) => println!("{name}: offline"),
-            Err(e) => eprintln!("task error: {e}"),
+        let (name, reachable) = res.context("panel task panicked")?;
+        if reachable {
+            println!("{name}: online");
+        } else {
+            println!("{name}: offline");
         }
     }
+
+    Ok(())
 }

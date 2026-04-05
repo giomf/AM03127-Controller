@@ -3,6 +3,7 @@ mod config;
 
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use config::Config;
 
@@ -29,20 +30,23 @@ enum Commands {
 
 #[tokio::main]
 async fn main() {
+    if let Err(e) = run().await {
+        eprintln!("error: {e:#}");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> Result<()> {
     let args = Args::parse();
 
-    let config = Config::from_file(&args.config).unwrap_or_else(|e| {
-        eprintln!("Error reading config '{}': {e}", args.config.display());
-        std::process::exit(1);
-    });
+    let config = Config::from_file(&args.config)?;
 
     match args.command {
         Commands::Status { panels } => {
-            let targets = config.select_panels(&panels).unwrap_or_else(|unknown| {
-                eprintln!("Unknown panel(s): {}", unknown.join(", "));
-                std::process::exit(1);
-            });
-            commands::status::run(&targets).await;
+            let targets = config.select_panels(&panels)?;
+            commands::status::run(&targets).await?;
         }
     }
+
+    Ok(())
 }
