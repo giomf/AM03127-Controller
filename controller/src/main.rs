@@ -50,7 +50,16 @@ const WIFI_DELAY_SECS: u64 = 5;
 pub type SharedUart = &'static Mutex<CriticalSectionRawMutex, Uart<'static>>;
 pub type SharedStorage = &'static Mutex<CriticalSectionRawMutex, FlashStorage<'static>>;
 
-esp_app_desc!();
+esp_app_desc!(
+    env!("BUILD_VERSION"),  // version
+    "AM03127-Controller", // project name
+    env!("BUILD_TIME"),   // build time
+    env!("BUILD_DATE"),   // build date
+    "5.2",                // ESP-IDF version
+    64 * 1024,            // MMU page size
+    0,                    // min eFuse block revision
+    u16::MAX              // max eFuse block revision
+);
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
