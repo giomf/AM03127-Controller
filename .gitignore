@@ -3,3 +3,4 @@
 target/
 .aider*
 !docs/*.html
+firmware.bin
