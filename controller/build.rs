@@ -1,7 +1,56 @@
 fn main() {
+    emit_build_time();
+    emit_build_version();
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+fn emit_build_version() {
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/refs/heads");
+    println!("cargo:rerun-if-env-changed=FORCE_VERSION_REBUILD");
+
+    let hash = std::process::Command::new("git")
+        .args(["rev-parse", "--short", "HEAD"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    let dirty = std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| !o.stdout.is_empty())
+        .unwrap_or(false);
+
+    let version = if dirty {
+        format!("{hash}-dirty")
+    } else {
+        hash
+    };
+
+    println!("cargo:rustc-env=BUILD_VERSION={version}");
+}
+
+fn emit_build_time() {
+    let now = time::OffsetDateTime::now_utc();
+    println!(
+        "cargo:rustc-env=BUILD_TIME={:02}:{:02}:{:02}",
+        now.hour(),
+        now.minute(),
+        now.second()
+    );
+    println!(
+        "cargo:rustc-env=BUILD_DATE={}-{:02}-{:02}",
+        now.year(),
+        now.month() as u8,
+        now.day()
+    );
 }
 
 fn linker_be_nice() {
