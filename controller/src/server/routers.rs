@@ -8,12 +8,34 @@ use picoserve::{
     extract::{Json, State},
     routing::{get, post, put_service},
 };
+use serde::Serialize;
 
 use super::AppState;
 use crate::{error::Error, panel::Panel, server::ota::OverTheAirUpdate};
 
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
+
+#[derive(Serialize)]
+struct BuildInfo {
+    version: &'static str,
+    build_time: &'static str,
+    build_date: &'static str,
+}
+
+/// Creates a router for the /status endpoint
+///
+/// # Returns
+/// * A router that returns build version, time and date as JSON
+pub fn status_router() -> impl MethodHandler<AppState> {
+    get(|| async move {
+        Json(BuildInfo {
+            version: env!("BUILD_VERSION"),
+            build_time: env!("BUILD_TIME"),
+            build_date: env!("BUILD_DATE"),
+        })
+    })
+}
 
 /// Creates a router for static content
 ///
