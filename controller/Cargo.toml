@@ -1,7 +1,24 @@
+[workspace]
+resolver = "2"
+
 [package]
 edition = "2024"
 name    = "am03127-controller"
 version = "0.1.0"
+
+[profile.dev]
+# Rust debug is too slow.
+# For debug builds always builds with some optimization
+opt-level = "s"
+
+[profile.release]
+codegen-units    = 1     # LLVM can perform better optimizations using a single thread
+debug            = 2
+debug-assertions = false
+incremental      = false
+lto              = 'fat'
+opt-level        = 's'
+overflow-checks  = false
 
 [dependencies]
 am03127 = { path = "../am03127" }

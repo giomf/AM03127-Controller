@@ -1,0 +1,4 @@
+[rust-analyzer]
+cargo.target = "riscv32imc-unknown-none-elf"
+cargo.extraArgs = ["-Z", "build-std=core,alloc"]
+cargo.features = ["esp32c3", "web_interface", "sntp"]
