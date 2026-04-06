@@ -64,6 +64,7 @@ impl AppWithStateBuilder for ServerProperties {
             .route("/clock", routers::clock_router())
             .route("/reset", routers::delete_all_router())
             .route("/ota", routers::ota_router())
+            .route("/status", routers::status_router())
             .layer(PreHandlerLogLayer);
 
         #[cfg(feature = "web_interface")]

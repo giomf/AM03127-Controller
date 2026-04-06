@@ -78,6 +78,20 @@ async fn main(spawner: Spawner) {
     let shared_storage = make_static!(Mutex<CriticalSectionRawMutex, FlashStorage>, Mutex::new(FlashStorage::new(peripherals.FLASH)));
     let panel = make_static!(Panel, Panel::new(shared_uart, shared_storage));
 
+    let mut ota_buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
+    let current_partition = {
+        let flash = &mut *shared_storage.lock().await;
+        let mut ota = OtaUpdater::new(flash, &mut ota_buffer).unwrap();
+        ota.selected_partition().unwrap()
+    };
+
+    log::info!("==========================================");
+    log::info!("  AM03127-Controller");
+    log::info!("  Version:   {}", env!("BUILD_VERSION"));
+    log::info!("  Built:     {} {}", env!("BUILD_DATE"), env!("BUILD_TIME"));
+    log::info!("  Partition: {:?}", current_partition);
+    log::info!("==========================================");
+
     #[cfg(target_arch = "riscv32")]
     let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     esp_rtos::start(
@@ -108,12 +122,6 @@ async fn main(spawner: Spawner) {
             },
         ));
     }
-
-    let mut buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
-    let flash = &mut *shared_storage.lock().await;
-    let mut ota = OtaUpdater::new(flash, &mut buffer).unwrap();
-    let current_partition = ota.selected_partition().unwrap();
-    log::info!("Successfully booted partition: {:?}", current_partition);
 }
 
 fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, WifiDevice<'static>) {
