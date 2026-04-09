@@ -33,13 +33,24 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Err(_) => pb.finish_with_message(format!("✗ {name}: offline")),
+            Err(_) => pb.finish_with_message(format!(
+                "{} {name}: {}",
+                console::style("✗").red(),
+                console::style("offline").red(),
+            )),
             Ok(response) => match response.json::<BuildInfo>().await {
                 Ok(info) => pb.finish_with_message(format!(
-                    "✓ {name}: online {} {} {}",
-                    info.version, info.build_date, info.build_time,
+                    "{} {name}: {} {} {}",
+                    console::style("✓").green(),
+                    console::style("online").green(),
+                    console::style(&info.version).cyan(),
+                    console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
                 )),
-                Err(_) => pb.finish_with_message(format!("✓ {name}: online")),
+                Err(_) => pb.finish_with_message(format!(
+                    "{} {name}: {}",
+                    console::style("✓").green(),
+                    console::style("online").green(),
+                )),
             },
         }
     }
