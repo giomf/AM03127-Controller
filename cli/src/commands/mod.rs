@@ -34,6 +34,7 @@ pub enum Commands {
         #[arg(short, long, value_delimiter = ',')]
         panels: Vec<String>,
     },
+    /// List all known panels
     List {},
 
     /// Open a panel's address in the browser
