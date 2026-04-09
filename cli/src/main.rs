@@ -35,6 +35,7 @@ enum Commands {
         #[arg(short, long, value_delimiter = ',')]
         panels: Vec<String>,
     },
+    List {},
 }
 
 #[tokio::main]
@@ -58,6 +59,9 @@ async fn run() -> Result<()> {
         Commands::Update { firmware, panels } => {
             let targets = config.select_panels(&panels)?;
             commands::update::run(&targets, &firmware).await?;
+        }
+        Commands::List {} => {
+            commands::list::run(&config.panels);
         }
     }
 
