@@ -79,17 +79,34 @@ async fn main(spawner: Spawner) {
     let panel = make_static!(Panel, Panel::new(shared_uart, shared_storage));
 
     let mut ota_buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
-    let current_partition = {
+    let (selected_partition, booted_partition) = {
         let flash = &mut *shared_storage.lock().await;
+        let mut pt_buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
+        let pt = esp_bootloader_esp_idf::partitions::read_partition_table(flash, &mut pt_buffer)
+            .unwrap();
+        let booted = pt
+            .booted_partition()
+            .ok()
+            .flatten()
+            .map(|p| p.partition_type());
         let mut ota = OtaUpdater::new(flash, &mut ota_buffer).unwrap();
-        ota.selected_partition().unwrap()
+        let selected = ota.selected_partition().unwrap();
+        (selected, booted)
     };
 
     log::info!("==========================================");
-    log::info!("  AM03127-Controller");
-    log::info!("  Version:   {}", env!("BUILD_VERSION"));
-    log::info!("  Built:     {} {}", env!("BUILD_DATE"), env!("BUILD_TIME"));
-    log::info!("  Partition: {:?}", current_partition);
+    log::info!("\tAM03127-Controller");
+    log::info!("\tVersion:\t\t{}", env!("BUILD_VERSION"));
+    log::info!(
+        "\tBuilt:\t\t\t{} {}",
+        env!("BUILD_DATE"),
+        env!("BUILD_TIME")
+    );
+    match booted_partition {
+        Some(p) => log::info!("\tBooted partition:\t{:?}", p),
+        None => log::info!("\tBooted partition:\tUnknown"),
+    }
+    log::info!("\tSelected partition:\t{:?}", selected_partition);
     log::info!("==========================================");
 
     #[cfg(target_arch = "riscv32")]
