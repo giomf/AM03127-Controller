@@ -26,6 +26,17 @@ async fn flash_firmware<BR: Read, F: NorFlash>(
     let mut last_printed_percent = 0;
     let mut write_buffer_pos = 0;
 
+    // Erase the region to be written before any writes. NorFlash bits can only transition
+    // 1→0; without a prior erase, old 0-bits from a previous firmware corrupt the new image.
+    log::info!("{LOGGER_NAME}: Erase partition");
+    let erase_size = F::ERASE_SIZE as u32;
+    let erase_end = (content_length as u32)
+        .div_ceil(erase_size)
+        .saturating_mul(erase_size);
+    target_partition
+        .erase(0, erase_end)
+        .map_err(|_| "Failed to erase OTA partition")?;
+
     log::info!("{LOGGER_NAME}: Update status 0%");
     loop {
         match body_reader.read(&mut body_buffer).await {
@@ -137,7 +148,7 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
 
             let current_partition = ota
                 .selected_partition()
-                .map_err(|_| "Failed to read current partition")?;
+                .map_err(|_| "Failed to read selected partition")?;
             log::info!(
                 "{LOGGER_NAME}: Currently selected partition {:?}",
                 current_partition
