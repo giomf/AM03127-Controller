@@ -2,41 +2,11 @@ mod commands;
 mod config;
 mod console;
 
-use std::path::PathBuf;
-
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use config::Config;
 
-#[derive(Parser)]
-#[command(about = "AM03127 panel controller CLI")]
-struct Args {
-    /// Path to the TOML config file
-    #[arg(short, long, default_value = "panel-config.toml")]
-    config: PathBuf,
-
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Check connectivity status of all panels
-    Status {
-        /// Panels to target, comma-separated (default: all)
-        #[arg(short, long, value_delimiter = ',')]
-        panels: Vec<String>,
-    },
-    /// Upload a firmware binary to panels via OTA
-    Update {
-        /// Path to the firmware .bin file
-        firmware: PathBuf,
-        /// Panels to target, comma-separated (default: all)
-        #[arg(short, long, value_delimiter = ',')]
-        panels: Vec<String>,
-    },
-    List {},
-}
+use crate::commands::{Args, Commands};
 
 #[tokio::main]
 async fn main() {
@@ -62,6 +32,10 @@ async fn run() -> Result<()> {
         }
         Commands::List {} => {
             commands::list::run(&config.panels);
+        }
+        Commands::Open { panel } => {
+            let targets = config.select_panels(&[panel])?;
+            commands::open::run(targets[0])?;
         }
     }
 
