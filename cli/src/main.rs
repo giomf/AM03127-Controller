@@ -19,21 +19,23 @@ async fn main() {
 async fn run() -> Result<()> {
     let args = Args::parse();
 
-    let config = Config::from_file(&args.config)?;
-
     match args.command {
         Commands::Status { panels } => {
+            let config = Config::from_file(&args.config)?;
             let targets = config.select_panels(&panels)?;
             commands::status::run(&targets).await?;
         }
         Commands::Update { firmware, panels } => {
+            let config = Config::from_file(&args.config)?;
             let targets = config.select_panels(&panels)?;
             commands::update::run(&targets, &firmware).await?;
         }
         Commands::List {} => {
+            let config = Config::from_file(&args.config)?;
             commands::list::run(&config.panels);
         }
         Commands::Open { panel } => {
+            let config = Config::from_file(&args.config)?;
             let targets = config.select_panels(&[panel])?;
             commands::open::run(targets[0])?;
         }
