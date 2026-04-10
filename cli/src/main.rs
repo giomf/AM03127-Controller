@@ -37,6 +37,9 @@ async fn run() -> Result<()> {
             let targets = config.select_panels(&[panel])?;
             commands::open::run(targets[0])?;
         }
+        Commands::Info { firmware } => {
+            commands::info::run(&firmware)?;
+        }
     }
 
     Ok(())
