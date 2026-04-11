@@ -5,13 +5,11 @@ edition = "2024"
 
 [dependencies]
 am03127 = { path = "../am03127" }
+am03127-client = { path = "../am03127-client" }
 anyhow = "1"
-bytes = "1"
 clap = { version = "4", features = ["derive"] }
 console = "0.15"
-futures = "0.3"
 indicatif = "0.17"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json"] }
 serde = { version = "1", features = ["derive"] }
 time = { version = "0.3", features = ["local-offset"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -1,0 +1,10 @@
+[package]
+name = "am03127-client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+am03127 = { path = "../am03127" }
+anyhow = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde = { version = "1", features = ["derive"] }

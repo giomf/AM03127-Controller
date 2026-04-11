@@ -1,31 +1,22 @@
+use am03127_client::PanelClient;
 use anyhow::{Context, Result};
-use serde::Deserialize;
 
 use crate::{
     config::Panel,
     console::{SpinnerGroup, print_title},
 };
 
-#[derive(Deserialize)]
-struct BuildInfo {
-    version: String,
-    build_time: String,
-    build_date: String,
-}
-
 pub async fn run(panels: &[&Panel]) -> Result<()> {
     print_title("Checking panel status");
-    let client = reqwest::Client::new();
     let spinners = SpinnerGroup::new();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
-        let client = client.clone();
+        let client = PanelClient::new(&panel.address);
         let name = panel.name.clone();
-        let url = format!("http://{}/status", panel.address);
         let pb = spinners.add(&name);
         set.spawn(async move {
-            let result = client.get(&url).send().await;
+            let result = client.get_status().await;
             (name, result, pb)
         });
     }
@@ -34,24 +25,17 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
             Err(_) => pb.finish_with_message(format!(
-                "{} {name}: {}",
+                "{} {name} {}",
                 console::style("✗").red(),
                 console::style("offline").red(),
             )),
-            Ok(response) => match response.json::<BuildInfo>().await {
-                Ok(info) => pb.finish_with_message(format!(
-                    "{} {name}: {} {} {}",
-                    console::style("✓").green(),
-                    console::style("online").green(),
-                    console::style(&info.version).cyan(),
-                    console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
-                )),
-                Err(_) => pb.finish_with_message(format!(
-                    "{} {name}: {}",
-                    console::style("✓").green(),
-                    console::style("online").green(),
-                )),
-            },
+            Ok(info) => pb.finish_with_message(format!(
+                "{} {name} {} {} {}",
+                console::style("✓").green(),
+                console::style("online").green(),
+                console::style(&info.version).cyan(),
+                console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
+            )),
         }
     }
 

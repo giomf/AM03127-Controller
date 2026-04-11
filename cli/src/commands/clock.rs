@@ -1,9 +1,13 @@
 use am03127::realtime_clock::DateTime;
+use am03127_client::PanelClient;
 use anyhow::{Context, Result};
 use console::style;
 use time::OffsetDateTime;
 
-use crate::{config::Panel, console::print_title};
+use crate::{
+    config::Panel,
+    console::{SpinnerGroup, print_title},
+};
 
 fn datetime_from_offset(dt: OffsetDateTime) -> DateTime {
     DateTime {
@@ -31,31 +35,28 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
         dt.second,
     ));
 
-    let client = reqwest::Client::new();
+    let spinners = SpinnerGroup::new();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
-        let client = client.clone();
+        let client = PanelClient::new(&panel.address);
         let name = panel.name.clone();
-        let url = format!("http://{}/clock", panel.address);
+        let pb = spinners.add(&name);
         set.spawn(async move {
-            let result = client
-                .post(&url)
-                .json(&dt)
-                .send()
-                .await
-                .and_then(|r| r.error_for_status());
-            (name, result)
+            let result = client.set_clock(&dt).await;
+            (name, result, pb)
         });
     }
 
     let mut success = true;
     while let Some(res) = set.join_next().await {
-        let (name, result) = res.context("panel task panicked")?;
+        let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => println!("{} {name}: clock updated", style("✓").green()),
+            Ok(_) => {
+                pb.finish_with_message(format!("{} {name} clock updated", style("✓").green(),))
+            }
             Err(e) => {
-                eprintln!("{} {name}: {e}", style("✗").red());
+                pb.finish_with_message(format!("{} {name} {e}", style("✗").red()));
                 success = false;
             }
         }
