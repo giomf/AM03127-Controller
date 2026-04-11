@@ -48,9 +48,11 @@ pub struct ProgressGroup {
 }
 
 impl ProgressGroup {
-    pub fn new(total_bytes: u64) -> Self {
-        let style =
-            ProgressStyle::with_template("{msg:15} [{bar:40.cyan/blue}] {percent}%").unwrap();
+    pub fn new(total_bytes: u64, label_width: usize) -> Self {
+        let template = format!(
+            "{{msg:{label_width}}} [{{bar:40.cyan/blue}}] {{percent}}%"
+        );
+        let style = ProgressStyle::with_template(&template).unwrap();
         Self {
             mp: MultiProgress::new(),
             style,

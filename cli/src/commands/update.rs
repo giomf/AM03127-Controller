@@ -5,12 +5,11 @@ use bytes::Bytes;
 use console::style;
 use futures::stream::{self, StreamExt};
 
+use super::FirmwareBuildInfo;
 use crate::{
     config::Panel,
     console::{ProgressGroup, print_title},
 };
-
-use super::FirmwareBuildInfo;
 
 const CHUNK_SIZE: usize = 4096;
 
@@ -21,22 +20,17 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
 
     if let Some(info) = FirmwareBuildInfo::parse(&firmware) {
         print_title(&format!(
-            "Firmware: {} {}",
+            "Updating {} panel(s) to {} built at {}",
+            panels.len(),
             style(&info.git_hash).cyan(),
             style(format!("{} {}", info.build_date, info.build_time)).dim(),
         ));
     }
-
-    print_title(&format!(
-        "Uploading {} bytes to {} panel(s)",
-        firmware_len,
-        panels.len()
-    ));
-
     let firmware = Bytes::from(firmware);
 
     let client = reqwest::Client::new();
-    let bars = ProgressGroup::new(firmware_len);
+    let label_width = panels.iter().map(|p| p.name.len()).max().unwrap_or(0);
+    let bars = ProgressGroup::new(firmware_len, label_width);
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
@@ -76,9 +70,13 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => pb.finish_with_message(format!("{name}: ✓ done, rebooting")),
+            Ok(_) => {
+                pb.println(format!("✓ {name} done, rebooting..."));
+                pb.finish_and_clear();
+            }
             Err(e) => {
-                pb.finish_with_message(format!("{name}: ✗ {e}"));
+                pb.println(format!("✗ {name} {e}"));
+                pb.finish_and_clear();
                 success = false;
             }
         }
