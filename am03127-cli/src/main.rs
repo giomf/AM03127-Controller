@@ -47,6 +47,15 @@ async fn run() -> Result<()> {
             let targets = config.select_panels(&panels)?;
             commands::clock::run(&targets).await?;
         }
+        Commands::Page { id, message, leading, lagging, waiting_time, panels } => {
+            let config = Config::from_file(&args.config)?;
+            let targets = config.select_panels(&panels)?;
+            let leading = commands::page::parse_leading(&leading)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            let lagging = commands::page::parse_lagging(&lagging)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            commands::page::run(&targets, id, message, leading, lagging, waiting_time).await?;
+        }
     }
 
     Ok(())

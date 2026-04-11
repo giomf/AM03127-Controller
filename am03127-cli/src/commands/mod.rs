@@ -2,6 +2,7 @@ pub mod clock;
 pub mod info;
 pub mod list;
 pub mod open;
+pub mod page;
 pub mod status;
 pub mod update;
 
@@ -90,6 +91,25 @@ pub enum Commands {
     },
     /// Sync the clock on panels to the current local time
     Clock {
+        /// Panels to target, comma-separated (default: all)
+        #[arg(short, long, value_delimiter = ',')]
+        panels: Vec<String>,
+    },
+    /// Send a page to panels
+    Page {
+        /// Page slot (A-Z)
+        id: char,
+        /// Text content to display
+        message: String,
+        /// Entry effect [default: immediate] (e.g. scroll_left, scroll_right, snow, random, …)
+        #[arg(long, default_value = "immediate")]
+        leading: String,
+        /// Exit effect [default: hold] (e.g. scroll_left, hold, immediate, …)
+        #[arg(long, default_value = "hold")]
+        lagging: String,
+        /// Waiting time in half-second steps (0 = 0.5 s, 25 = 13 s)
+        #[arg(long, default_value_t = 0)]
+        waiting_time: u8,
         /// Panels to target, comma-separated (default: all)
         #[arg(short, long, value_delimiter = ',')]
         panels: Vec<String>,

@@ -259,6 +259,25 @@ pub struct Page {
 impl CommandAble for Page {}
 
 impl Page {
+    pub fn new(
+        id: char,
+        message: String,
+        leading: Leading,
+        lagging: Lagging,
+        waiting_mode_and_speed: WaitingModeAndSpeed,
+        waiting_time: WaitingTime,
+    ) -> Self {
+        Self {
+            line: 1,
+            id,
+            leading,
+            lagging,
+            waiting_mode_and_speed,
+            waiting_time,
+            message,
+        }
+    }
+
     /// Replaces European characters with their panel-specific codes
     ///
     /// # Arguments

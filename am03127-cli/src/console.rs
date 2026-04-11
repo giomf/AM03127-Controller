@@ -41,17 +41,15 @@ impl SpinnerGroup {
 }
 
 /// A group of per-task byte-count progress bars rendered together.
-pub struct ProgressGroup {
+pub struct _ProgressGroup {
     mp: MultiProgress,
     style: ProgressStyle,
     total: u64,
 }
 
-impl ProgressGroup {
-    pub fn new(total_bytes: u64, label_width: usize) -> Self {
-        let template = format!(
-            "{{msg:{label_width}}} [{{bar:40.cyan/blue}}] {{percent}}%"
-        );
+impl _ProgressGroup {
+    pub fn _new(total_bytes: u64, label_width: usize) -> Self {
+        let template = format!("{{msg:{label_width}}} [{{bar:40.cyan/blue}}] {{percent}}%");
         let style = ProgressStyle::with_template(&template).unwrap();
         Self {
             mp: MultiProgress::new(),
@@ -62,7 +60,7 @@ impl ProgressGroup {
 
     /// Add a progress bar entry for the given label. The returned [`ProgressBar`]
     /// tracks bytes and should be finished once the upload completes.
-    pub fn add(&self, label: impl Into<String>) -> ProgressBar {
+    pub fn _add(&self, label: impl Into<String>) -> ProgressBar {
         let pb = self.mp.add(ProgressBar::new(self.total));
         pb.set_style(self.style.clone());
         pb.set_message(label.into());

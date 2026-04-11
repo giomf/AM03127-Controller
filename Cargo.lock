@@ -13,6 +13,7 @@ dependencies = [
  "console",
  "indicatif",
  "serde",
+ "serde_json",
  "time",
  "tokio",
  "toml",
