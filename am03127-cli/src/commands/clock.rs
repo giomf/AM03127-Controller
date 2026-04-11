@@ -1,4 +1,4 @@
-use am03127::realtime_clock::DateTime;
+use am03127_commands::realtime_clock::DateTime;
 use am03127_client::PanelClient;
 use anyhow::{Context, Result};
 use console::style;

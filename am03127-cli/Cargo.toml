@@ -1,10 +1,10 @@
 [package]
-name = "cli"
+name = "am03127-cli"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-am03127 = { path = "../am03127" }
+am03127-commands = { path = "../am03127-commands" }
 am03127-client = { path = "../am03127-client" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

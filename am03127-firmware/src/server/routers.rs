@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use am03127::{page::Page, realtime_clock::DateTime, schedule::Schedule};
+use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 #[cfg(feature = "web_interface")]
 use picoserve::routing::{MethodHandler, get_service};
 use picoserve::{

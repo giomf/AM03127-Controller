@@ -2,7 +2,7 @@ extern crate alloc;
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
 use core::{fmt::Debug, marker::PhantomData, ops::Range};
 
-use am03127::{page::Page, schedule::Schedule};
+use am03127_commands::{page::Page, schedule::Schedule};
 use embassy_embedded_hal::adapter::BlockingAsync;
 use sequential_storage::{
     cache::NoCache,

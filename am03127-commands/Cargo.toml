@@ -1,5 +1,5 @@
 [package]
-name = "am03127"
+name = "am03127-commands"
 version = "0.1.0"
 edition = "2024"
 

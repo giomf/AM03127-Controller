@@ -3,7 +3,7 @@ resolver = "2"
 
 [package]
 edition = "2024"
-name    = "am03127-controller"
+name    = "am03127-firmware"
 version = "0.1.0"
 
 [profile.dev]
@@ -21,7 +21,7 @@ opt-level        = 's'
 overflow-checks  = false
 
 [dependencies]
-am03127 = { path = "../am03127" }
+am03127-commands = { path = "../am03127-commands" }
 critical-section = "1.2.0"
 embassy-embedded-hal = "0.5.0"
 embassy-executor = { version = "0.9.1" }

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "am03127",
+    "am03127-commands",
     "am03127-client",
-    "cli",
+    "am03127-cli",
 ]

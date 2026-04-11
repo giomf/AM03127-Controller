@@ -3,7 +3,7 @@ default:
 
 # Save the debug build as a raw firmware image.
 save-image:
-    espflash save-image ./controller/target/riscv32imc-unknown-none-elf/debug/am03127-controller firmware.bin --chip esp32c3
+    espflash save-image ./am03127-firmware/target/riscv32imc-unknown-none-elf/debug/am03127-firmware firmware.bin --chip esp32c3
 
 # Upload firmware.bin to the OTA endpoint of the device.
 # Usage: just ota <device-ip>
