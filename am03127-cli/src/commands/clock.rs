@@ -1,5 +1,5 @@
-use am03127_commands::realtime_clock::DateTime;
 use am03127_client::PanelClient;
+use am03127_commands::realtime_clock::DateTime;
 use anyhow::{Context, Result};
 use console::style;
 use time::OffsetDateTime;
@@ -35,6 +35,7 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
         dt.second,
     ));
 
+    let label_width = super::label_width(panels);
     let spinners = SpinnerGroup::new();
     let mut set = tokio::task::JoinSet::new();
 
@@ -52,11 +53,15 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => {
-                pb.finish_with_message(format!("{} {name} clock updated", style("✓").green(),))
-            }
+            Ok(_) => pb.finish_with_message(format!(
+                "{} {name:<label_width$}  clock updated",
+                style("✓").green(),
+            )),
             Err(e) => {
-                pb.finish_with_message(format!("{} {name} {e}", style("✗").red()));
+                pb.finish_with_message(format!(
+                    "{} {name:<label_width$}  {e}",
+                    style("✗").red()
+                ));
                 success = false;
             }
         }

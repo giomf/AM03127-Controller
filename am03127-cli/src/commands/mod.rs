@@ -7,6 +7,10 @@ pub mod update;
 
 use std::path::PathBuf;
 
+use clap::{Parser, Subcommand};
+
+use crate::config::Panel;
+
 const FW_GIT_HASH_OFFSET: usize = 0x30;
 const FW_GIT_HASH_LEN: usize = 16;
 const FW_BUILD_TIME_OFFSET: usize = 0x70;
@@ -40,7 +44,9 @@ impl FirmwareBuildInfo {
     }
 }
 
-use clap::{Parser, Subcommand};
+pub fn label_width(panels: &[&Panel]) -> usize {
+    panels.iter().map(|p| p.name.len()).max().unwrap_or(0)
+}
 
 #[derive(Parser)]
 #[command(about = "AM03127 panel controller CLI")]

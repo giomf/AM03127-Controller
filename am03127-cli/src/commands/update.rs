@@ -23,6 +23,7 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
         ));
     }
 
+    let label_width = super::label_width(panels);
     let spinners = SpinnerGroup::new();
     let mut set = tokio::task::JoinSet::new();
 
@@ -44,12 +45,15 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
         match result {
             Ok(_) => {
                 pb.finish_with_message(format!(
-                    "{} {name}: done, rebooting...",
+                    "{} {name:<label_width$}  done, rebooting...",
                     style("✓").green()
                 ));
             }
             Err(e) => {
-                pb.finish_with_message(format!("{} {name}: {e}", style("✗").red()));
+                pb.finish_with_message(format!(
+                    "{} {name:<label_width$}  {e}",
+                    style("✗").red()
+                ));
                 success = false;
             }
         }

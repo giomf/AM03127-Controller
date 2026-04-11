@@ -8,6 +8,7 @@ use crate::{
 
 pub async fn run(panels: &[&Panel]) -> Result<()> {
     print_title("Checking panel status");
+    let label_width = super::label_width(panels);
     let spinners = SpinnerGroup::new();
     let mut set = tokio::task::JoinSet::new();
 
@@ -25,12 +26,12 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
             Err(_) => pb.finish_with_message(format!(
-                "{} {name} {}",
+                "{} {name:<label_width$}  {}",
                 console::style("✗").red(),
                 console::style("offline").red(),
             )),
             Ok(info) => pb.finish_with_message(format!(
-                "{} {name} {} {} {}",
+                "{} {name:<label_width$}  {} {} {}",
                 console::style("✓").green(),
                 console::style("online").green(),
                 console::style(&info.version).cyan(),
