@@ -213,10 +213,10 @@ async fn wifi_task(
             wifi_controller.start_async().await.unwrap();
             log::info!("{LOGGER_NAME}: Wifi started");
         }
-        log::info!("{LOGGER_NAME}: Connect to wifi");
+
         match wifi_controller.connect_async().await {
             Ok(_) => {
-                log::info!("{LOGGER_NAME}: Wifi connected");
+                log::info!("{LOGGER_NAME}: Wifi connected to {SSID}");
                 network_stack.wait_link_up().await;
                 log::info!("{LOGGER_NAME}: Getting DHCP IP address");
                 network_stack.wait_config_up().await;
@@ -229,7 +229,10 @@ async fn wifi_task(
                 }
             }
             Err(e) => {
-                log::info!("{LOGGER_NAME}: Failed to connect to wifi: {:?}", e);
+                log::info!(
+                    "{LOGGER_NAME}: Failed to connect to wifi \"{SSID}\": {:?}",
+                    e
+                );
                 Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await
             }
         }
