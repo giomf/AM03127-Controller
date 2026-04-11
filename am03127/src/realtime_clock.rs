@@ -10,7 +10,7 @@ use super::CommandAble;
 ///
 /// This struct is used to set or represent the current date and time
 /// on the LED panel's internal clock.
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct DateTime {
     /// Year (0-99)
     pub year: u8,

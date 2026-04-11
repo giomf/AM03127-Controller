@@ -42,6 +42,11 @@ async fn run() -> Result<()> {
         Commands::Info { firmware } => {
             commands::info::run(&firmware)?;
         }
+        Commands::Clock { panels } => {
+            let config = Config::from_file(&args.config)?;
+            let targets = config.select_panels(&panels)?;
+            commands::clock::run(&targets).await?;
+        }
     }
 
     Ok(())

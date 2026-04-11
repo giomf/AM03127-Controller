@@ -1,3 +1,4 @@
+pub mod clock;
 pub mod info;
 pub mod list;
 pub mod open;
@@ -80,5 +81,11 @@ pub enum Commands {
     Info {
         /// Path to the firmware .bin file
         firmware: PathBuf,
+    },
+    /// Sync the clock on panels to the current local time
+    Clock {
+        /// Panels to target, comma-separated (default: all)
+        #[arg(short, long, value_delimiter = ',')]
+        panels: Vec<String>,
     },
 }
