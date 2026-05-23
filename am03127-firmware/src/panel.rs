@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use am03127_commands::{
     CommandAble,
-    delete::{DeleteAll, DeletePage, DeleteSchedule},
+    delete::{DeleteAll, DeletePage, DeleteSchedule, ResetEuropeanCharset},
     page::Page,
     realtime_clock::DateTime,
     schedule::Schedule,
@@ -86,6 +86,8 @@ impl Panel {
     /// * `Err(Error)` if initialization failed
     pub async fn init(&self) -> Result<(), Error> {
         log::info!("{LOGGER_NAME}: Initialize panel");
+        let command = ResetEuropeanCharset {}.command(DEFAULT_PANEL_ID);
+        self.uart.lock().await.write(&command).await?;
         let command = set_id(DEFAULT_PANEL_ID);
         self.uart.lock().await.write(&command).await?;
         self.init_pages().await?;

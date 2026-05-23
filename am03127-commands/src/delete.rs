@@ -2,6 +2,15 @@ use core::fmt::Display;
 
 use super::{CommandAble, DEFAULT_LINE, DEFAULT_PAGE, DEFAULT_SCHEDULE};
 
+/// Command to reset the European charset table on the LED panel
+pub struct ResetEuropeanCharset {}
+impl CommandAble for ResetEuropeanCharset {}
+impl Display for ResetEuropeanCharset {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "<DU>")
+    }
+}
+
 /// Command to delete all pages and schedules from the LED panel
 pub struct DeleteAll {}
 impl CommandAble for DeleteAll {}
