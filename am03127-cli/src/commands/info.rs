@@ -4,19 +4,23 @@ use anyhow::{Context, Result};
 use console::style;
 
 use super::FirmwareBuildInfo;
-use crate::console::print_title;
+use crate::console::Console;
 
-pub fn run(firmware_path: &Path) -> Result<()> {
+pub fn run(firmware_path: &Path, console: &Console) -> Result<()> {
     let firmware = fs::read(firmware_path)
         .with_context(|| format!("failed to read '{}'", firmware_path.display()))?;
 
     match FirmwareBuildInfo::parse(&firmware) {
         Some(info) => {
-            print_title(&format!(
-                "Firmware: {} {}",
-                style(&info.git_hash).cyan(),
-                style(format!("{} {}", info.build_date, info.build_time)).dim(),
-            ));
+            if console.plain {
+                println!("{} {} {}", info.git_hash, info.build_date, info.build_time);
+            } else {
+                console.print_title(&format!(
+                    "Firmware: {} {}",
+                    style(&info.git_hash).cyan(),
+                    style(format!("{} {}", info.build_date, info.build_time)).dim(),
+                ));
+            }
         }
         None => {
             anyhow::bail!(

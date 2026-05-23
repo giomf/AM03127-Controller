@@ -3,13 +3,13 @@ use anyhow::{Context, Result};
 
 use crate::{
     config::Panel,
-    console::{SpinnerGroup, print_title},
+    console::Console,
 };
 
-pub async fn run(panels: &[&Panel]) -> Result<()> {
-    print_title("Checking panel status");
+pub async fn run(panels: &[&Panel], console: &Console) -> Result<()> {
+    console.print_title("Checking panel status");
     let label_width = super::label_width(panels);
-    let spinners = SpinnerGroup::new();
+    let spinners = console.spinner_group();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
@@ -25,18 +25,27 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Err(_) => pb.finish_with_message(format!(
-                "{} {name:<label_width$}  {}",
-                console::style("✗").red(),
-                console::style("offline").red(),
-            )),
-            Ok(info) => pb.finish_with_message(format!(
-                "{} {name:<label_width$}  {} {} {}",
-                console::style("✓").green(),
-                console::style("online").green(),
-                console::style(&info.version).cyan(),
-                console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
-            )),
+            Err(_) => pb.finish(
+                format!("{name}: offline"),
+                format!(
+                    "{} {name:<label_width$}  {}",
+                    console::style("✗").red(),
+                    console::style("offline").red(),
+                ),
+            ),
+            Ok(info) => pb.finish(
+                format!(
+                    "{name}: online {} {} {}",
+                    info.version, info.build_date, info.build_time
+                ),
+                format!(
+                    "{} {name:<label_width$}  {} {} {}",
+                    console::style("✓").green(),
+                    console::style("online").green(),
+                    console::style(&info.version).cyan(),
+                    console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
+                ),
+            ),
         }
     }
 

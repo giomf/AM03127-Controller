@@ -7,24 +7,25 @@ use console::style;
 use super::FirmwareBuildInfo;
 use crate::{
     config::Panel,
-    console::{SpinnerGroup, print_title},
+    console::Console,
 };
 
-pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
+pub async fn run(panels: &[&Panel], firmware_path: &Path, console: &Console) -> Result<()> {
     let firmware = fs::read(firmware_path)
         .with_context(|| format!("failed to read '{}'", firmware_path.display()))?;
 
     if let Some(info) = FirmwareBuildInfo::parse(&firmware) {
-        print_title(&format!(
-            "Updating {} panel(s) to {} built at {}",
+        console.print_title(&format!(
+            "Updating {} panel(s) to {} built at {} {}",
             panels.len(),
             style(&info.git_hash).cyan(),
-            style(format!("{} {}", info.build_date, info.build_time)).dim(),
+            style(&info.build_date).dim(),
+            style(&info.build_time).dim(),
         ));
     }
 
     let label_width = super::label_width(panels);
-    let spinners = SpinnerGroup::new();
+    let spinners = console.spinner_group();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
@@ -43,17 +44,15 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => {
-                pb.finish_with_message(format!(
-                    "{} {name:<label_width$}  done, rebooting...",
-                    style("✓").green()
-                ));
-            }
+            Ok(_) => pb.finish(
+                format!("{name}: ok"),
+                format!("{} {name:<label_width$}  done, rebooting...", style("✓").green()),
+            ),
             Err(e) => {
-                pb.finish_with_message(format!(
-                    "{} {name:<label_width$}  {e}",
-                    style("✗").red()
-                ));
+                pb.finish(
+                    format!("{name}: error: {e}"),
+                    format!("{} {name:<label_width$}  {e}", style("✗").red()),
+                );
                 success = false;
             }
         }

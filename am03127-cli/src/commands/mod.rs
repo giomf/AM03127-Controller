@@ -56,6 +56,10 @@ pub struct Args {
     #[arg(short, long, default_value = "panel-config.toml")]
     pub config: PathBuf,
 
+    /// Plain output mode: no spinners, no colours (useful for scripts)
+    #[arg(long)]
+    pub plain: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

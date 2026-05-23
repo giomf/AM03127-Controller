@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 
 use crate::{
     config::Panel,
-    console::{SpinnerGroup, print_title},
+    console::Console,
 };
 
 fn datetime_from_offset(dt: OffsetDateTime) -> DateTime {
@@ -21,11 +21,11 @@ fn datetime_from_offset(dt: OffsetDateTime) -> DateTime {
     }
 }
 
-pub async fn run(panels: &[&Panel]) -> Result<()> {
+pub async fn run(panels: &[&Panel], console: &Console) -> Result<()> {
     let now = OffsetDateTime::now_local().context("failed to get local time")?;
     let dt = datetime_from_offset(now);
 
-    print_title(&format!(
+    console.print_title(&format!(
         "Setting clock to {:04}-{:02}-{:02} {:02}:{:02}:{:02}",
         2000u16 + dt.year as u16,
         dt.month,
@@ -36,7 +36,7 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
     ));
 
     let label_width = super::label_width(panels);
-    let spinners = SpinnerGroup::new();
+    let spinners = console.spinner_group();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
@@ -53,15 +53,15 @@ pub async fn run(panels: &[&Panel]) -> Result<()> {
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => pb.finish_with_message(format!(
-                "{} {name:<label_width$}  clock updated",
-                style("✓").green(),
-            )),
+            Ok(_) => pb.finish(
+                format!("{name}: ok"),
+                format!("{} {name:<label_width$}  clock updated", style("✓").green()),
+            ),
             Err(e) => {
-                pb.finish_with_message(format!(
-                    "{} {name:<label_width$}  {e}",
-                    style("✗").red()
-                ));
+                pb.finish(
+                    format!("{name}: error: {e}"),
+                    format!("{} {name:<label_width$}  {e}", style("✗").red()),
+                );
                 success = false;
             }
         }

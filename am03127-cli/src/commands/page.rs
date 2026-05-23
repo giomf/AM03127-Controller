@@ -5,7 +5,7 @@ use console::style;
 
 use crate::{
     config::Panel,
-    console::{SpinnerGroup, print_title},
+    console::Console,
 };
 
 pub fn parse_leading(s: &str) -> Result<Leading, String> {
@@ -25,6 +25,7 @@ pub async fn run(
     leading: Leading,
     lagging: Lagging,
     waiting_time: u8,
+    console: &Console,
 ) -> Result<()> {
     if !id.is_ascii_uppercase() {
         bail!("page id must be an uppercase ASCII letter (A-Z), got '{id}'");
@@ -39,10 +40,10 @@ pub async fn run(
         WaitingTime::new(waiting_time),
     );
 
-    print_title(&format!("Sending page '{id}' to panels"));
+    console.print_title(&format!("Sending page '{id}' to panels"));
 
     let label_width = super::label_width(panels);
-    let spinners = SpinnerGroup::new();
+    let spinners = console.spinner_group();
     let mut set = tokio::task::JoinSet::new();
 
     for panel in panels {
@@ -60,15 +61,18 @@ pub async fn run(
     while let Some(res) = set.join_next().await {
         let (name, result, pb) = res.context("panel task panicked")?;
         match result {
-            Ok(_) => pb.finish_with_message(format!(
-                "{} {name:<label_width$}  page '{id}' sent",
-                style("✓").green(),
-            )),
+            Ok(_) => pb.finish(
+                format!("{name}: ok"),
+                format!(
+                    "{} {name:<label_width$}  page '{id}' sent",
+                    style("✓").green()
+                ),
+            ),
             Err(e) => {
-                pb.finish_with_message(format!(
-                    "{} {name:<label_width$}  {e}",
-                    style("✗").red()
-                ));
+                pb.finish(
+                    format!("{name}: error: {e}"),
+                    format!("{} {name:<label_width$}  {e}", style("✗").red()),
+                );
                 success = false;
             }
         }
