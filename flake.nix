@@ -18,8 +18,23 @@
         overlays = [ rust-overlay.overlays.default ];
       };
       toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+      rustPlatform = pkgs.makeRustPlatform {
+        cargo = toolchain;
+        rustc = toolchain;
+      };
     in
     {
+      packages.${system} = {
+        am03127-cli = rustPlatform.buildRustPackage {
+          pname = "am03127-cli";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          cargoBuildFlags = [ "-p" "am03127-cli" ];
+        };
+        default = self.packages.${system}.am03127-cli;
+      };
+
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
           toolchain
