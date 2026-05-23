@@ -7,6 +7,8 @@ use serde::Deserialize;
 pub struct Panel {
     pub name: String,
     pub address: String,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -23,7 +25,7 @@ impl Config {
 
     pub fn select_panels<'a>(&'a self, names: &[String]) -> Result<Vec<&'a Panel>> {
         if names.is_empty() {
-            return Ok(self.panels.iter().collect());
+            return Ok(self.panels.iter().filter(|p| !p.hidden).collect());
         }
 
         let unknown: Vec<&str> = names
