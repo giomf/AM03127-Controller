@@ -24,7 +24,12 @@ pub struct Schedule {
 
 impl Schedule {
     pub fn new(id: char, from: ScheduleDateTime, to: ScheduleDateTime, pages: String) -> Self {
-        Self { id, from, to, pages }
+        Self {
+            id,
+            from,
+            to,
+            pages,
+        }
     }
 }
 

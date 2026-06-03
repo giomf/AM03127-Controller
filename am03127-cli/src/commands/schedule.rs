@@ -9,8 +9,11 @@ use crate::{config::Panel, console::Console};
 /// Parses a datetime string in `YYYY-MM-DDTHH:MM` or `YYYY-MM-DD` (midnight) format.
 pub fn parse_schedule_datetime(s: &str) -> Result<ScheduleDateTime, String> {
     let dt = if s.contains('T') {
-        PrimitiveDateTime::parse(s, format_description!("[year]-[month]-[day]T[hour]:[minute]"))
-            .map_err(|e| format!("invalid datetime '{s}': {e} (expected YYYY-MM-DDTHH:MM)"))?
+        PrimitiveDateTime::parse(
+            s,
+            format_description!("[year]-[month]-[day]T[hour]:[minute]"),
+        )
+        .map_err(|e| format!("invalid datetime '{s}': {e} (expected YYYY-MM-DDTHH:MM)"))?
     } else {
         let date = Date::parse(s, format_description!("[year]-[month]-[day]"))
             .map_err(|e| format!("invalid date '{s}': {e} (expected YYYY-MM-DD)"))?;

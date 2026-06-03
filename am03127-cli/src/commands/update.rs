@@ -5,10 +5,7 @@ use anyhow::{Context, Result};
 use console::style;
 
 use super::FirmwareBuildInfo;
-use crate::{
-    config::Panel,
-    console::Console,
-};
+use crate::{config::Panel, console::Console};
 
 pub async fn run(panels: &[&Panel], firmware_path: &Path, console: &Console) -> Result<()> {
     let firmware = fs::read(firmware_path)
@@ -46,7 +43,10 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path, console: &Console) -> 
         match result {
             Ok(_) => pb.finish(
                 format!("{name}: ok"),
-                format!("{} {name:<label_width$}  done, rebooting...", style("✓").green()),
+                format!(
+                    "{} {name:<label_width$}  done, rebooting...",
+                    style("✓").green()
+                ),
             ),
             Err(e) => {
                 pb.finish(
@@ -64,4 +64,3 @@ pub async fn run(panels: &[&Panel], firmware_path: &Path, console: &Console) -> 
 
     Ok(())
 }
-

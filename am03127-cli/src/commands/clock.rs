@@ -4,10 +4,7 @@ use anyhow::{Context, Result};
 use console::style;
 use time::OffsetDateTime;
 
-use crate::{
-    config::Panel,
-    console::Console,
-};
+use crate::{config::Panel, console::Console};
 
 fn datetime_from_offset(dt: OffsetDateTime) -> DateTime {
     DateTime {

@@ -3,10 +3,7 @@ use am03127_commands::page::{Lagging, Leading, Page, WaitingModeAndSpeed, Waitin
 use anyhow::{Context, Result, bail};
 use console::style;
 
-use crate::{
-    config::Panel,
-    console::Console,
-};
+use crate::{config::Panel, console::Console};
 
 pub fn parse_leading(s: &str) -> Result<Leading, String> {
     serde_json::from_value(serde_json::Value::String(s.to_string()))

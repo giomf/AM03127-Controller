@@ -6,7 +6,10 @@ pub fn run(panels: &[Panel], console: &Console) {
     for panel in panels {
         let hidden_tag = if panel.hidden { " [hidden]" } else { "" };
         if console.plain {
-            println!("{:<label_width$}  {}{}", panel.name, panel.address, hidden_tag);
+            println!(
+                "{:<label_width$}  {}{}",
+                panel.name, panel.address, hidden_tag
+            );
         } else {
             println!(
                 "{:<label_width$}  {}{}",
