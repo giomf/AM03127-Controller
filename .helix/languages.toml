@@ -3,6 +3,10 @@ name = "rust"
 
 [language-server.rust-analyzer.config]
 check.allTargets = false
+linkedProjects = [
+    "Cargo.toml",
+    "am03127-firmware/Cargo.toml",
+]
 
 [language.formatter]
 command = "rustfmt"
