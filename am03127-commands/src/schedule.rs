@@ -22,6 +22,12 @@ pub struct Schedule {
     pages: String,
 }
 
+impl Schedule {
+    pub fn new(id: char, from: ScheduleDateTime, to: ScheduleDateTime, pages: String) -> Self {
+        Self { id, from, to, pages }
+    }
+}
+
 impl CommandAble for Schedule {}
 
 impl Display for Schedule {
@@ -33,15 +39,15 @@ impl Display for Schedule {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ScheduleDateTime {
     /// Year (0-99)
-    year: u8,
+    pub year: u8,
     /// Month (1-12)
-    month: u8,
+    pub month: u8,
     /// Day of the month (1-31)
-    day: u8,
+    pub day: u8,
     /// Hour (0-23)
-    hour: u8,
+    pub hour: u8,
     /// Minute (0-59)
-    minute: u8,
+    pub minute: u8,
 }
 
 impl Display for ScheduleDateTime {

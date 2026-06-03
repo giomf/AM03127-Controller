@@ -3,6 +3,7 @@ pub mod info;
 pub mod list;
 pub mod open;
 pub mod page;
+pub mod schedule;
 pub mod status;
 pub mod update;
 
@@ -114,6 +115,22 @@ pub enum Commands {
         /// Waiting time in half-second steps (0 = 0.5 s, 25 = 13 s)
         #[arg(long, default_value_t = 0)]
         waiting_time: u8,
+        /// Panels to target, comma-separated (default: all)
+        #[arg(short, long, value_delimiter = ',')]
+        panels: Vec<String>,
+    },
+    /// Program a schedule slot to display a page between two datetimes
+    Schedule {
+        /// Schedule slot (A-Z)
+        id: char,
+        /// Page to display (A-Z)
+        page: char,
+        /// Start datetime (YYYY-MM-DD or YYYY-MM-DDTHH:MM)
+        #[arg(long)]
+        from: String,
+        /// End datetime (YYYY-MM-DD or YYYY-MM-DDTHH:MM)
+        #[arg(long)]
+        to: String,
         /// Panels to target, comma-separated (default: all)
         #[arg(short, long, value_delimiter = ',')]
         panels: Vec<String>,

@@ -58,6 +58,15 @@ async fn run() -> Result<()> {
                 .map_err(|e| anyhow::anyhow!(e))?;
             commands::page::run(&targets, id, message, leading, lagging, waiting_time, &console).await?;
         }
+        Commands::Schedule { id, page, from, to, panels } => {
+            let config = Config::from_file(&args.config)?;
+            let targets = config.select_panels(&panels)?;
+            let from = commands::schedule::parse_schedule_datetime(&from)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            let to = commands::schedule::parse_schedule_datetime(&to)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            commands::schedule::run(&targets, id, page, from, to, &console).await?;
+        }
     }
 
     Ok(())

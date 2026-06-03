@@ -12,6 +12,6 @@ console = "0.15"
 indicatif = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-time = { version = "0.3", features = ["local-offset"] }
+time = { version = "0.3", features = ["local-offset", "macros", "parsing"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 toml = "0.8"
