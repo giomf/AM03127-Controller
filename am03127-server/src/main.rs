@@ -3,7 +3,7 @@
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
-use am03127_client::config::{Config, Panel};
+use am03127_client::config::{Config, Model, Panel};
 use anyhow::{Context, Result};
 use axum::{
     Json, Router,
@@ -47,6 +47,7 @@ struct PanelInfo<'a> {
     name: &'a str,
     hidden: bool,
     floor: Option<&'a str>,
+    model: Option<Model>,
 }
 
 async fn list_panels(State(state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -57,6 +58,7 @@ async fn list_panels(State(state): State<Arc<AppState>>) -> impl IntoResponse {
             name: &p.name,
             hidden: p.hidden,
             floor: p.floor.as_deref(),
+            model: p.model,
         })
         .collect();
     Json(panels).into_response()

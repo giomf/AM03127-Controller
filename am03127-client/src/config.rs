@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result, bail};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct Panel {
@@ -12,6 +12,19 @@ pub struct Panel {
     /// Where the panel hangs, e.g. "Obergeschoss"; groups panels in the web UI.
     #[serde(default)]
     pub floor: Option<String>,
+    /// Panel hardware variant; `None` is the standard panel.
+    #[serde(default)]
+    pub model: Option<Model>,
+}
+
+/// AM03127 hardware variants besides the standard panel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Model {
+    /// Wider panel ("L").
+    Long,
+    /// Multi-colour panel ("C").
+    Color,
 }
 
 #[derive(Debug, Deserialize)]

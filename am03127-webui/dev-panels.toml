@@ -3,11 +3,13 @@
 name = "Kitchen"
 address = "127.0.0.1:3001"
 floor = "Obergeschoss"
+model = "long"
 
 [[panels]]
 name = "Office"
 address = "127.0.0.1:3002"
 floor = "Erdgeschoss"
+model = "color"
 
 [[panels]]
 name = "Offline"

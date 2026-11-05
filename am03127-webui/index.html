@@ -11,6 +11,9 @@
         header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 16px; border-bottom: 1px solid var(--line); }
         header h1 { font-size: 1.4rem; margin: 16px 0 8px; }
         .panels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .model { display: inline-block; height: 0.6em; margin-left: 8px; border-radius: 2px; vertical-align: 0.05em; }
+        .model.long { width: 1.8em; border: 2px solid currentColor; box-sizing: border-box; }
+        .model.color { width: 1.1em; background: linear-gradient(90deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7); }
         h3.floor { margin: 16px 0 0; font-size: 0.9rem; opacity: 0.8; }
         .panel { display: flex; flex-direction: column; gap: 2px; min-width: 140px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
         .panel.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }

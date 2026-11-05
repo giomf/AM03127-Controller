@@ -1,4 +1,4 @@
-use am03127_client::config::Panel;
+use am03127_client::config::{Model, Panel};
 
 use crate::console::Console;
 
@@ -12,17 +12,23 @@ pub fn run(panels: &[Panel], console: &Console) {
             .as_deref()
             .map(|f| format!(" ({f})"))
             .unwrap_or_default();
+        let model = match panel.model {
+            Some(Model::Long) => " [long]",
+            Some(Model::Color) => " [color]",
+            None => "",
+        };
         if console.plain {
             println!(
-                "{:<label_width$}  {}{}{}",
-                panel.name, panel.address, floor, hidden_tag
+                "{:<label_width$}  {}{}{}{}",
+                panel.name, panel.address, floor, model, hidden_tag
             );
         } else {
             println!(
-                "{:<label_width$}  {}{}{}",
+                "{:<label_width$}  {}{}{}{}",
                 panel.name,
                 console::style(&panel.address).dim(),
                 floor,
+                console::style(model).cyan(),
                 console::style(hidden_tag).yellow()
             );
         }

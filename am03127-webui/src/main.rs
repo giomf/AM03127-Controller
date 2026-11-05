@@ -29,6 +29,7 @@ struct PanelInfo {
     name: String,
     hidden: bool,
     floor: Option<String>,
+    model: Option<am03127_client::config::Model>,
 }
 
 /// `None` is the panel serving this page; `Some(name)` a panel behind am03127-server.
@@ -595,7 +596,17 @@ fn PanelChip(panel: PanelInfo) -> impl IntoView {
                 ctx.refresh.update(|n| *n += 1);
             }
         >
-            <strong>{panel.name}{panel.hidden.then_some(" (hidden)")}</strong>
+            <strong>
+                {panel.name}{panel.hidden.then_some(" (hidden)")}
+                {panel.model.map(|model| {
+                    use am03127_client::config::Model;
+                    let (class, title) = match model {
+                        Model::Long => ("model long", "Long panel"),
+                        Model::Color => ("model color", "Color panel"),
+                    };
+                    view! { <span class=class title=title></span> }
+                })}
+            </strong>
             <small>
                 {move || match status.get() {
                     None => view! { "…" }.into_any(),
