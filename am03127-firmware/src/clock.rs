@@ -5,7 +5,7 @@ use embassy_net::{
     Stack as NetworkStack,
     udp::{PacketMetadata, UdpSocket},
 };
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer, with_timeout};
 use sntpc::{NtpContext, NtpTimestampGenerator, get_time};
 use time::{Date, Month, OffsetDateTime, UtcOffset, macros::offset, util::days_in_month};
 
@@ -13,6 +13,10 @@ use crate::{PANEL_INIT_DELAY_SECS, panel::Panel};
 
 const CLOCK_INIT_DELAY_SECS: u64 = PANEL_INIT_DELAY_SECS + 5;
 const CLOCK_UPDATE_INTERVAL_SECS: u64 = 86_400; // 24h
+/// sntpc waits forever for an answer, so a lost UDP packet would stop the task.
+const SNTP_TIMEOUT_SECS: u64 = 10;
+/// Retry delay after a failed sync, instead of waiting a whole interval.
+const CLOCK_RETRY_SECS: u64 = 300;
 const LOGGER_NAME: &str = "Clock";
 const SNTP_ADDRESS: [u8; 4] = [188, 174, 253, 188];
 const SNTP_PORT: u16 = 123;
@@ -103,18 +107,34 @@ pub async fn timing_task(network_stack: NetworkStack<'static>, panel: &'static P
         );
         socket.bind(SNTP_PORT).unwrap();
         log::info!("{LOGGER_NAME}: Getting current date");
-        match get_time(sntp_address, &socket, context).await {
-            Ok(result) => {
+        let timeout = Duration::from_secs(SNTP_TIMEOUT_SECS);
+        let next_sync_secs = match with_timeout(timeout, get_time(sntp_address, &socket, context))
+            .await
+        {
+            Ok(Ok(result)) => {
                 let timestamp = result.sec();
                 let mut datetime = OffsetDateTime::from_unix_timestamp(timestamp as i64).unwrap();
                 datetime = datetime.to_offset(eu_utc_offset(&datetime));
                 log::info!("{LOGGER_NAME}: Setting current date to panel: {datetime}");
-                if let Err(e) = panel.set_clock(&DateTimeWrapper::from(datetime)).await {
-                    log::error!("{LOGGER_NAME}: Failed to send current date to panel. {e}");
+                match panel.set_clock(&DateTimeWrapper::from(datetime)).await {
+                    Ok(()) => CLOCK_UPDATE_INTERVAL_SECS,
+                    Err(e) => {
+                        log::error!("{LOGGER_NAME}: Failed to send current date to panel. {e}");
+                        CLOCK_RETRY_SECS
+                    }
                 }
             }
-            Err(e) => log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e),
+            Ok(Err(e)) => {
+                log::error!("{LOGGER_NAME}: Failed to get current time {:?}", e);
+                CLOCK_RETRY_SECS
+            }
+            Err(_) => {
+                log::error!(
+                    "{LOGGER_NAME}: No answer from time server within {SNTP_TIMEOUT_SECS} s"
+                );
+                CLOCK_RETRY_SECS
+            }
         };
-        Timer::after(Duration::from_secs(CLOCK_UPDATE_INTERVAL_SECS)).await;
+        Timer::after(Duration::from_secs(next_sync_secs)).await;
     }
 }
