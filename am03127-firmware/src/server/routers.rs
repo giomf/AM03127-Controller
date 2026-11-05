@@ -94,8 +94,13 @@ pub fn page_router() -> impl MethodHandler<AppState, (char,)> {
                 return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
             }
             log::debug!("{LOGGER_NAME}: {:?}", page);
+            if page.id != page_id {
+                return Err(Error::BadRequest(
+                    "Page ID in path and body differ".try_into().unwrap(),
+                ));
+            }
 
-            match panel.set_page(page_id, page).await {
+            match panel.set_page(page).await {
                 Ok(_) => Ok(()),
                 Err(err) => {
                     log::error!("{LOGGER_NAME}: {err}");
@@ -139,7 +144,7 @@ pub fn pages_router() -> impl MethodHandler<AppState> {
     .post(
         |State(panel): State<&'static Panel>, Json::<Vec<Page>>(pages)| async move {
             for page in pages {
-                if let Err(err) = panel.set_page(page.id, page).await {
+                if let Err(err) = panel.set_page(page).await {
                     log::error!("{LOGGER_NAME}: {err}");
                     return Err(err);
                 }
@@ -185,7 +190,13 @@ pub fn schedule_router() -> impl MethodHandler<AppState, (char,)> {
                     ));
                 }
 
-                match panel.set_schedule(schedule_id, schedule).await {
+                if schedule.id != schedule_id {
+                    return Err(Error::BadRequest(
+                        "Schedule ID in path and body differ".try_into().unwrap(),
+                    ));
+                }
+
+                match panel.set_schedule(schedule).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         log::error!("{LOGGER_NAME}: {err}");
@@ -231,7 +242,7 @@ pub fn schedules_router() -> impl MethodHandler<AppState> {
     .post(
         |State(panel): State<&'static Panel>, Json::<Vec<Schedule>>(schedules)| async move {
             for schedule in schedules {
-                if let Err(err) = panel.set_schedule(schedule.id, schedule).await {
+                if let Err(err) = panel.set_schedule(schedule).await {
                     log::error!("{LOGGER_NAME}: {err}");
                     return Err(err);
                 }

@@ -170,13 +170,13 @@ impl Panel {
     /// Sends the page to the LED panel and persists it to flash storage.
     ///
     /// # Arguments
-    /// * `page_id` - The ID of the page to set (A-Z)
-    /// * `page` - The page content
+    /// * `page` - The page content; its `id` (A-Z) selects the slot
     ///
     /// # Returns
     /// * `Ok(())` if the page was set successfully
     /// * `Err(Error)` if setting the page failed
-    pub async fn set_page(&self, page_id: char, page: Page) -> Result<(), Error> {
+    pub async fn set_page(&self, page: Page) -> Result<(), Error> {
+        let page_id = page.id;
         log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
         log::debug!("{LOGGER_NAME}: {:?}", page);
 
@@ -247,13 +247,13 @@ impl Panel {
     /// Sends the schedule to the LED panel and persists it to flash storage.
     ///
     /// # Arguments
-    /// * `schedule_id` - The ID of the schedule to set (A-E)
-    /// * `schedule` - The schedule content
+    /// * `schedule` - The schedule content; its `id` (A-E) selects the slot
     ///
     /// # Returns
     /// * `Ok(())` if the schedule was set successfully
     /// * `Err(Error)` if setting the schedule failed
-    pub async fn set_schedule(&self, schedule_id: char, schedule: Schedule) -> Result<(), Error> {
+    pub async fn set_schedule(&self, schedule: Schedule) -> Result<(), Error> {
+        let schedule_id = schedule.id;
         log::info!("{LOGGER_NAME}: Setting schedule \"{schedule_id}\"");
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 
