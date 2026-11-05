@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
-#[deny(clippy::mem_forget)]
+#![deny(clippy::mem_forget)]
 #[cfg(feature = "sntp")]
 mod clock;
 mod error;
