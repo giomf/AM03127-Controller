@@ -484,6 +484,12 @@ fn Schedules() -> impl IntoView {
 
 #[component]
 fn Device() -> impl IntoView {
+    let ctx = expect_context::<Ctx>();
+    let status = LocalResource::new(move || {
+        ctx.refresh.track();
+        let client = client();
+        async move { client.get_status().await.map_err(|e| e.to_string()) }
+    });
     let file = NodeRef::<html::Input>::new();
     let file_name = RwSignal::new(None::<String>);
 
@@ -517,6 +523,34 @@ fn Device() -> impl IntoView {
 
     view! {
         <section class="cards">
+            <div class="card">
+                <h2>"Status"</h2>
+                <Suspense fallback=|| view! { <p>"Loading…"</p> }>
+                    {move || status.get().map(|result| match result {
+                        Ok(s) => view! {
+                            <dl class="status">
+                                <dt>"Firmware"</dt><dd>{s.version.clone()}</dd>
+                                <dt>"Built"</dt><dd>{format!("{} {} UTC", s.build_date, s.build_time)}</dd>
+                                <dt>"Uptime"</dt><dd>{s.uptime()}</dd>
+                                <dt>"Wi-Fi"</dt>
+                                <dd>{s.rssi.map(|rssi| format!("{rssi} dBm")).unwrap_or_else(|| "not measured yet".into())}</dd>
+                                <dt>"Memory"</dt>
+                                <dd>{format!("{} KB free, {} KB used", s.heap_free / 1024, s.heap_used / 1024)}</dd>
+                                <dt>"Panel"</dt>
+                                <dd class:error=s.panel_ok == Some(false)>
+                                    {match s.panel_ok {
+                                        Some(true) => "answers",
+                                        Some(false) => "not responding",
+                                        None => "no command sent yet",
+                                    }}
+                                </dd>
+                            </dl>
+                        }.into_any(),
+                        Err(err) => view! { <p class="error">"Unreachable: "{err}</p> }.into_any(),
+                    })}
+                </Suspense>
+                <button on:click=move |_| status.refetch()>"Refresh"</button>
+            </div>
             <div class="card">
                 <h2>"Clock"</h2>
                 <p>"Set the panel's clock to the current time of this browser."</p>
@@ -607,15 +641,20 @@ fn PanelChip(panel: PanelInfo) -> impl IntoView {
                     view! { <span class=class title=title></span> }
                 })}
             </strong>
-            <small>
-                {move || match status.get() {
-                    None => view! { "…" }.into_any(),
-                    Some(Ok(info)) => view! {
-                        <span class="dot online">"●"</span>" "{info.version}
-                    }.into_any(),
-                    Some(Err(_)) => view! { <span class="dot offline">"●"</span>" offline" }.into_any(),
-                }}
-            </small>
+            {move || match status.get() {
+                None => view! { <small>"…"</small> }.into_any(),
+                Some(Ok(info)) => view! {
+                    <small title=info.details().join("\n")>
+                        <span class="dot online">"●"</span>" "{info.version.clone()}
+                        {(info.panel_ok == Some(false)).then(|| view! {
+                            <span class="error">" · panel not responding"</span>
+                        })}
+                    </small>
+                }.into_any(),
+                Some(Err(_)) => view! {
+                    <small><span class="dot offline">"●"</span>" offline"</small>
+                }.into_any(),
+            }}
         </div>
     }
 }

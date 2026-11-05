@@ -30,19 +30,25 @@ pub async fn run(panels: &[&Panel], console: &Console) -> Result<()> {
                     console::style("offline").red(),
                 ),
             ),
-            Ok(info) => pb.finish(
-                format!(
-                    "{name}: online {} {} {}",
-                    info.version, info.build_date, info.build_time
-                ),
-                format!(
-                    "{} {name:<label_width$}  {} {} {}",
-                    console::style("✓").green(),
-                    console::style("online").green(),
-                    console::style(&info.version).cyan(),
-                    console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
-                ),
-            ),
+            Ok(info) => {
+                let details = info.details().join(", ");
+                let (mark, state) = match info.panel_ok {
+                    Some(false) => (console::style("!").yellow(), console::style("online").yellow()),
+                    _ => (console::style("✓").green(), console::style("online").green()),
+                };
+                pb.finish(
+                    format!(
+                        "{name}: online {} {} {} {details}",
+                        info.version, info.build_date, info.build_time
+                    ),
+                    format!(
+                        "{mark} {name:<label_width$}  {state} {} {}  {}",
+                        console::style(&info.version).cyan(),
+                        console::style(format!("{} {}", info.build_date, info.build_time)).dim(),
+                        details,
+                    ),
+                )
+            }
         }
     }
 

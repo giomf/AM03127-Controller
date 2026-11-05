@@ -1,16 +1,9 @@
 pub mod config;
 mod transport;
 
+pub use am03127_commands::status::Status;
 use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 use anyhow::Result;
-use serde::Deserialize;
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct BuildInfo {
-    pub version: String,
-    pub build_time: String,
-    pub build_date: String,
-}
 
 /// Async HTTP client for a single AM03127 panel.
 ///
@@ -38,8 +31,8 @@ impl PanelClient {
 
     // ── Status ────────────────────────────────────────────────────────────────
 
-    pub async fn get_status(&self) -> Result<BuildInfo> {
-        self.http.get::<BuildInfo>(&self.url("/status")).await
+    pub async fn get_status(&self) -> Result<Status> {
+        self.http.get::<Status>(&self.url("/status")).await
     }
 
     // ── Clock ─────────────────────────────────────────────────────────────────

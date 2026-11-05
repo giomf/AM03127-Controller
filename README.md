@@ -55,7 +55,11 @@ cd am03127-firmware && cargo run --release   # flash over USB (also writes the p
 
 For updates over Wi-Fi, `just save-image` builds the web UI and the release firmware into `firmware.bin`, and `just ota <panel-ip>` uploads it. The web UI's Device tab can upload it as well.
 
-The `version` the panel reports (`GET /status`, shown in the web UI) is the short git hash of the build, with `-dirty` if the tree had uncommitted changes.
+`GET /status` reports the build and the controller's health, shown in the web UI and by `am03127-cli status`:
+
+- `version`: short git hash of the build, `-dirty` if the tree had uncommitted changes
+- `uptime_secs`, `rssi` (Wi-Fi dBm), `heap_free` / `heap_used` (bytes)
+- `panel_ok`: whether the panel answered the last command (`null` before the first one)
 
 ### Web UI
 
@@ -81,8 +85,8 @@ am03127-server --config panel-config.toml --listen 0.0.0.0:8080 --web-root <buil
 `am03127-cli` works on all (non-hidden) panels of `panel-config.toml`, or on the ones given with `--panels`:
 
 ```sh
-am03127-cli status                                   # which panels are reachable
-am03127-cli info                                     # firmware version of each panel
+am03127-cli status                                   # reachability, firmware version and health of each panel
+am03127-cli info firmware.bin                        # build info of a firmware file
 am03127-cli clock                                    # set the clocks to the local time
 am03127-cli page A "Hello" --leading scroll_left     # send page A
 am03127-cli schedule A A --from 2026-12-24 --to 2026-12-26   # show page A in that window

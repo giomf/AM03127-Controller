@@ -8,7 +8,16 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-STATUS = {"version": "mock", "build_time": "00:00:00", "build_date": "2026-01-01"}
+STATUS = {
+    "version": "mock",
+    "build_time": "00:00:00",
+    "build_date": "2026-01-01",
+    "uptime_secs": 93784,
+    "rssi": -61,
+    "heap_free": 53248,
+    "heap_used": 49152,
+    "panel_ok": True,
+}
 store = {"page": {}, "schedule": {}}
 
 

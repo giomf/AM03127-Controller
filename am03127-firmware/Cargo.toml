@@ -25,6 +25,7 @@ am03127-commands = { path = "../am03127-commands" }
 critical-section = "1.2.0"
 embassy-embedded-hal = "0.6.0"
 embassy-executor = { version = "0.10" }
+embassy-futures = "0.1"
 embassy-net = { version = "0.9.1", features = [
   "dhcpv4",
   "medium-ethernet",

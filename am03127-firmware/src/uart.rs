@@ -1,5 +1,7 @@
 extern crate alloc;
 
+use core::sync::atomic::{AtomicU8, Ordering};
+
 use embassy_time::{Duration, with_timeout};
 use embedded_io_async::Write;
 use esp_hal::{
@@ -19,6 +21,18 @@ const READ_BUFFER_SIZE: usize = 32;
 const LOGGER_NAME: &str = "UART";
 /// Uart timeout in seconds
 const UART_TIMEOUT_SECS: u64 = 5;
+
+/// Outcome of the last command: 0 none sent yet, 1 answered, 2 failed. Atomic so
+/// `/status` can read it without waiting for a command holding the UART lock.
+static LAST_RESULT: AtomicU8 = AtomicU8::new(0);
+
+/// Whether the panel answered the last command, `None` if none was sent since start.
+pub fn panel_ok() -> Option<bool> {
+    match LAST_RESULT.load(Ordering::Relaxed) {
+        0 => None,
+        result => Some(result == 1),
+    }
+}
 
 /// UART communication interface for the LED panel
 ///
@@ -68,6 +82,12 @@ impl<'a> Uart<'a> {
     /// * `Ok(())` if the write was successful and the panel acknowledged it
     /// * `Err(Error)` if the write failed or the panel rejected the command
     pub async fn write(&mut self, data: &str) -> Result<(), Error> {
+        let result = self.transfer(data).await;
+        LAST_RESULT.store(if result.is_ok() { 1 } else { 2 }, Ordering::Relaxed);
+        result
+    }
+
+    async fn transfer(&mut self, data: &str) -> Result<(), Error> {
         log::debug!("{LOGGER_NAME}: Sending {data}");
 
         // Drop stale bytes, e.g. a late answer to an earlier timed-out command,

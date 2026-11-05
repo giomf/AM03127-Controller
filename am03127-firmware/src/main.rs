@@ -11,7 +11,10 @@ mod server;
 mod storage;
 mod uart;
 
+use core::sync::atomic::{AtomicI32, Ordering};
+
 use embassy_executor::Spawner;
+use embassy_futures::select::{Either, select};
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer, with_timeout};
@@ -45,6 +48,10 @@ const PANEL_INIT_DELAY_SECS: u64 = 10;
 const WIFI_DELAY_SECS: u64 = 5;
 /// Max wait for link and DHCP after connecting; a drop in that window would otherwise hang the task.
 const WIFI_CONFIG_TIMEOUT_SECS: u64 = 30;
+/// How often the signal strength is refreshed while connected
+const WIFI_RSSI_INTERVAL_SECS: u64 = 30;
+/// Wi-Fi signal strength in dBm, `i32::MIN` while not connected. Read by `/status`.
+pub static WIFI_RSSI: AtomicI32 = AtomicI32::new(i32::MIN);
 
 pub type SharedUart = &'static Mutex<CriticalSectionRawMutex, Uart<'static>>;
 pub type SharedStorage = &'static Mutex<CriticalSectionRawMutex, FlashStorage<'static>>;
@@ -193,8 +200,19 @@ async fn wifi_task(
 
     loop {
         if wifi_controller.is_connected() {
-            // wait until we're no longer connected
-            let _ = wifi_controller.wait_for_disconnect_async().await;
+            // Wait until we're no longer connected, refreshing the signal strength meanwhile.
+            loop {
+                if let Ok(rssi) = wifi_controller.rssi() {
+                    WIFI_RSSI.store(rssi, Ordering::Relaxed);
+                }
+                let interval = Timer::after(Duration::from_secs(WIFI_RSSI_INTERVAL_SECS));
+                if let Either::First(_) =
+                    select(wifi_controller.wait_for_disconnect_async(), interval).await
+                {
+                    break;
+                }
+            }
+            WIFI_RSSI.store(i32::MIN, Ordering::Relaxed);
             log::info!("{LOGGER_NAME}: Wifi disconnected");
             Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await
         }

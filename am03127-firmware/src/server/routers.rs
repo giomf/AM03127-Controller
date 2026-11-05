@@ -1,14 +1,13 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule};
+use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule, status::Status};
 #[cfg(feature = "web_interface")]
 use picoserve::routing::get_service;
 use picoserve::{
     extract::{Json, State},
     routing::{MethodHandler, get, post, put_service},
 };
-use serde::Serialize;
 
 use super::AppState;
 use crate::{
@@ -20,23 +19,22 @@ use crate::{
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
 
-#[derive(Serialize)]
-struct BuildInfo {
-    version: &'static str,
-    build_time: &'static str,
-    build_date: &'static str,
-}
-
 /// Creates a router for the /status endpoint
 ///
 /// # Returns
-/// * A router that returns build version, time and date as JSON
+/// * A router that returns build info and health (uptime, Wi-Fi, heap, panel) as JSON
 pub fn status_router() -> impl MethodHandler<AppState> {
     get(|| async move {
-        Json(BuildInfo {
-            version: env!("BUILD_VERSION"),
-            build_time: env!("BUILD_TIME"),
-            build_date: env!("BUILD_DATE"),
+        let rssi = crate::WIFI_RSSI.load(core::sync::atomic::Ordering::Relaxed);
+        Json(Status {
+            version: env!("BUILD_VERSION").into(),
+            build_time: env!("BUILD_TIME").into(),
+            build_date: env!("BUILD_DATE").into(),
+            uptime_secs: embassy_time::Instant::now().as_secs(),
+            rssi: (rssi != i32::MIN).then_some(rssi),
+            heap_free: esp_alloc::HEAP.free() as u32,
+            heap_used: esp_alloc::HEAP.used() as u32,
+            panel_ok: crate::uart::panel_ok(),
         })
     })
 }

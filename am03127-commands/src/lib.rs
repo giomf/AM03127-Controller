@@ -6,6 +6,7 @@ pub mod formatting;
 pub mod page;
 pub mod realtime_clock;
 pub mod schedule;
+pub mod status;
 
 extern crate alloc;
 use alloc::{
