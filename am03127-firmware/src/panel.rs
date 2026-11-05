@@ -31,8 +31,11 @@ const PAGE_MEMORY_SIZE: usize = core::mem::size_of::<Option<PageWrapper>>();
 const SCHEDULE_MEMORY_SIZE: usize = core::mem::size_of::<Option<ScheduleWrapper>>();
 /// Size of a estimated longest String
 const ESTIMATED_STRING_SIZE: usize = 32;
+/// Room for a page's message in its storage buffer. Not a limit on purpose: the HTTP
+/// request buffer (2048 bytes) caps a message well before this.
+const PAGE_MESSAGE_BUFFER_SIZE: usize = 2048;
 /// Total size needed for a page entry (key + data)
-const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE + ESTIMATED_STRING_SIZE;
+const PAGE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + PAGE_MEMORY_SIZE + PAGE_MESSAGE_BUFFER_SIZE;
 /// Total size needed for a schedule entry (key + data)
 const SCHEDULE_ENTRY_SIZE: usize = KEY_MEMORY_SIZE + SCHEDULE_MEMORY_SIZE + ESTIMATED_STRING_SIZE;
 
