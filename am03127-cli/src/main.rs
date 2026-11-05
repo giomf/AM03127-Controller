@@ -1,10 +1,9 @@
 mod commands;
-mod config;
 mod console;
 
+use am03127_client::config::Config;
 use anyhow::Result;
 use clap::Parser;
-use config::Config;
 use console::Console;
 
 use crate::commands::{Args, Commands};

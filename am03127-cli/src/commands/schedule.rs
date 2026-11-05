@@ -1,10 +1,10 @@
-use am03127_client::PanelClient;
+use am03127_client::{PanelClient, config::Panel};
 use am03127_commands::schedule::{Schedule, ScheduleDateTime};
 use anyhow::{Context, Result, bail};
 use console::style;
 use time::{Date, PrimitiveDateTime, Time, macros::format_description};
 
-use crate::{config::Panel, console::Console};
+use crate::console::Console;
 
 /// Parses a datetime string in `YYYY-MM-DDTHH:MM` or `YYYY-MM-DD` (midnight) format.
 pub fn parse_schedule_datetime(s: &str) -> Result<ScheduleDateTime, String> {

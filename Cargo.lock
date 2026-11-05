@@ -16,7 +16,6 @@ dependencies = [
  "serde_json",
  "time",
  "tokio",
- "toml",
 ]
 
 [[package]]
@@ -27,6 +26,7 @@ dependencies = [
  "anyhow",
  "reqwest",
  "serde",
+ "toml",
 ]
 
 [[package]]

@@ -1,10 +1,10 @@
-use am03127_client::PanelClient;
+use am03127_client::{PanelClient, config::Panel};
 use am03127_commands::realtime_clock::DateTime;
 use anyhow::{Context, Result};
 use console::style;
 use time::OffsetDateTime;
 
-use crate::{config::Panel, console::Console};
+use crate::console::Console;
 
 fn datetime_from_offset(dt: OffsetDateTime) -> DateTime {
     DateTime {

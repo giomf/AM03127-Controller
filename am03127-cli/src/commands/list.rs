@@ -1,4 +1,6 @@
-use crate::{config::Panel, console::Console};
+use am03127_client::config::Panel;
+
+use crate::console::Console;
 
 pub fn run(panels: &[Panel], console: &Console) {
     console.print_title("Available Panels");

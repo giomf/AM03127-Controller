@@ -1,7 +1,7 @@
-use am03127_client::PanelClient;
+use am03127_client::{PanelClient, config::Panel};
 use anyhow::{Context, Result};
 
-use crate::{config::Panel, console::Console};
+use crate::console::Console;
 
 pub async fn run(panels: &[&Panel], console: &Console) -> Result<()> {
     console.print_title("Checking panel status");

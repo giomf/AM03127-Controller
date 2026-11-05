@@ -1,9 +1,9 @@
-use am03127_client::PanelClient;
+use am03127_client::{PanelClient, config::Panel};
 use am03127_commands::page::{Lagging, Leading, Page, WaitingModeAndSpeed, WaitingTime};
 use anyhow::{Context, Result, bail};
 use console::style;
 
-use crate::{config::Panel, console::Console};
+use crate::console::Console;
 
 pub fn parse_leading(s: &str) -> Result<Leading, String> {
     serde_json::from_value(serde_json::Value::String(s.to_string()))

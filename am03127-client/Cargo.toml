@@ -8,3 +8,4 @@ am03127-commands = { path = "../am03127-commands" }
 anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1", features = ["derive"] }
+toml = "0.8"

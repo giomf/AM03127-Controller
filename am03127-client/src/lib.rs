@@ -1,3 +1,5 @@
+pub mod config;
+
 use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 use anyhow::Result;
 use serde::Deserialize;

@@ -1,11 +1,11 @@
 use std::{fs, path::Path};
 
-use am03127_client::PanelClient;
+use am03127_client::{PanelClient, config::Panel};
 use anyhow::{Context, Result};
 use console::style;
 
 use super::FirmwareBuildInfo;
-use crate::{config::Panel, console::Console};
+use crate::console::Console;
 
 pub async fn run(panels: &[&Panel], firmware_path: &Path, console: &Console) -> Result<()> {
     let firmware = fs::read(firmware_path)

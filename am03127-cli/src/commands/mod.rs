@@ -9,9 +9,8 @@ pub mod update;
 
 use std::path::PathBuf;
 
+use am03127_client::config::Panel;
 use clap::{Parser, Subcommand};
-
-use crate::config::Panel;
 
 const FW_GIT_HASH_OFFSET: usize = 0x30;
 const FW_GIT_HASH_LEN: usize = 16;

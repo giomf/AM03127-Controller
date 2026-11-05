@@ -1,6 +1,5 @@
+use am03127_client::config::Panel;
 use anyhow::{Context, Result};
-
-use crate::config::Panel;
 
 pub fn run(panel: &Panel) -> Result<()> {
     let url = format!("http://{}", panel.address);
