@@ -81,11 +81,15 @@ impl<'a> Uart<'a> {
             .map_err(|_| Error::Uart("Read timeout".try_into().unwrap()))??;
 
         log::debug!("{LOGGER_NAME}: Receiving {bytes_read} bytes");
-        let response = core::str::from_utf8(&buffer[..bytes_read]).unwrap();
+        // Compare raw bytes: line noise is not valid UTF-8 and must not panic.
+        let response = &buffer[..bytes_read];
 
-        log::debug!("{LOGGER_NAME}: Interpreting response as: {}", response);
+        log::debug!(
+            "{LOGGER_NAME}: Interpreting response as: {}",
+            core::str::from_utf8(response).unwrap_or("<not UTF-8>")
+        );
 
-        if response.starts_with("NACK") {
+        if response.starts_with(b"NACK") {
             log::error!("{LOGGER_NAME}: Panel rejected the command (NACK)");
             return Err(Error::Uart("Panel rejected the command (NACK)".try_into().unwrap()));
         }
