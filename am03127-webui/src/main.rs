@@ -344,6 +344,7 @@ fn Pages() -> impl IntoView {
                     Err(err) => view! { <p class="error">{err}</p> }.into_any(),
                 })}
             </Suspense>
+            <FormattingHelp />
         </section>
     }
 }
@@ -479,6 +480,37 @@ fn Schedules() -> impl IntoView {
                 })}
             </Suspense>
         </section>
+    }
+}
+
+#[component]
+fn FormattingHelp() -> impl IntoView {
+    use am03127_commands::formatting::{Clock, ColumnStart, Font};
+    let tags = [
+        (Font::Normal.to_string(), "Normal font (5x7)"),
+        (Font::Bold.to_string(), "Bold font (6x7)"),
+        (Font::Narrow.to_string(), "Narrow font (4x7)"),
+        (Font::Large.to_string(), "Large font (7x13), 16 px high panels only"),
+        (Font::Long.to_string(), "Long font (5x8), panels higher than 7 px only"),
+        (Clock::Date.to_string(), "Current date (DD/MM/YY)"),
+        (Clock::Time.to_string(), "Current time (hh:mm)"),
+        (ColumnStart(0x10).to_string(), "Start text at column NN (hex), here column 16"),
+    ];
+
+    view! {
+        <details>
+            <summary>"Special characters"</summary>
+            <div class="table">
+                <table>
+                    <thead><tr><th>"Code"</th><th>"Effect"</th></tr></thead>
+                    <tbody>
+                        {tags.into_iter().map(|(code, effect)| view! {
+                            <tr><td><code>{code}</code></td><td>{effect}</td></tr>
+                        }).collect_view()}
+                    </tbody>
+                </table>
+            </div>
+        </details>
     }
 }
 
