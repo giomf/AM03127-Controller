@@ -9,6 +9,9 @@ pub struct Panel {
     pub address: String,
     #[serde(default)]
     pub hidden: bool,
+    /// Where the panel hangs, e.g. "Obergeschoss"; groups panels in the web UI.
+    #[serde(default)]
+    pub floor: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

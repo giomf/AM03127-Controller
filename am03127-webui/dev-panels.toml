@@ -2,12 +2,15 @@
 [[panels]]
 name = "Kitchen"
 address = "127.0.0.1:3001"
+floor = "Obergeschoss"
 
 [[panels]]
 name = "Office"
 address = "127.0.0.1:3002"
+floor = "Erdgeschoss"
 
 [[panels]]
 name = "Offline"
 address = "127.0.0.1:3999"
+floor = "Erdgeschoss"
 hidden = true

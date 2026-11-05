@@ -46,6 +46,7 @@ struct AppState {
 struct PanelInfo<'a> {
     name: &'a str,
     hidden: bool,
+    floor: Option<&'a str>,
 }
 
 async fn list_panels(State(state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -55,6 +56,7 @@ async fn list_panels(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         .map(|p| PanelInfo {
             name: &p.name,
             hidden: p.hidden,
+            floor: p.floor.as_deref(),
         })
         .collect();
     Json(panels).into_response()

@@ -98,6 +98,7 @@ The CLI and the server read the panels from a `panel-config.toml`:
 [[panels]]
 name = "Kitchen"
 address = "192.168.1.23"   # host name or IP of the panel
+floor = "Obergeschoss"     # optional, groups the panels in the server's web UI
 
 [[panels]]
 name = "Spare"

@@ -28,6 +28,7 @@ struct Ctx {
 struct PanelInfo {
     name: String,
     hidden: bool,
+    floor: Option<String>,
 }
 
 /// `None` is the panel serving this page; `Some(name)` a panel behind am03127-server.
@@ -544,47 +545,66 @@ fn Device() -> impl IntoView {
     }
 }
 
-/// Panel picker behind am03127-server: click a panel to edit it.
+/// Panel picker behind am03127-server: click a panel to edit it. Panels are grouped by
+/// floor, in the order the floors first appear in panel-config.toml.
 #[cfg(feature = "server")]
 #[component]
 fn PanelBar(panels: Vec<PanelInfo>) -> impl IntoView {
+    let mut floors: Vec<(Option<String>, Vec<PanelInfo>)> = Vec::new();
+    for panel in panels {
+        match floors.iter_mut().find(|(floor, _)| *floor == panel.floor) {
+            Some((_, group)) => group.push(panel),
+            None => floors.push((panel.floor.clone(), vec![panel])),
+        }
+    }
+
+    floors
+        .into_iter()
+        .map(|(floor, panels)| {
+            view! {
+                {floor.map(|floor| view! { <h3 class="floor">{floor}</h3> })}
+                <div class="panels">
+                    {panels.into_iter().map(|panel| view! { <PanelChip panel /> }).collect_view()}
+                </div>
+            }
+        })
+        .collect_view()
+}
+
+/// One panel in the [`PanelBar`] with its online status and firmware version.
+#[cfg(feature = "server")]
+#[component]
+fn PanelChip(panel: PanelInfo) -> impl IntoView {
     let ctx = expect_context::<Ctx>();
-    let select = move |name: String| {
-        ctx.panel.set(Some(name));
-        ctx.refresh.update(|n| *n += 1);
-    };
+    let name = panel.name.clone();
+    let status = LocalResource::new({
+        let name = name.clone();
+        move || {
+            let client = client_for(Some(&name));
+            async move { client.get_status().await.map_err(|e| e.to_string()) }
+        }
+    });
+    let (is_current, click) = (name.clone(), name);
 
     view! {
-        <div class="panels">
-            {panels.into_iter().map(|panel| {
-                let name = panel.name.clone();
-                let status = LocalResource::new({
-                    let name = name.clone();
-                    move || {
-                        let client = client_for(Some(&name));
-                        async move { client.get_status().await.map_err(|e| e.to_string()) }
-                    }
-                });
-                let (is_current, click) = (name.clone(), name.clone());
-                view! {
-                    <div
-                        class="panel"
-                        class:active=move || ctx.panel.get().as_deref() == Some(is_current.as_str())
-                        on:click=move |_| select(click.clone())
-                    >
-                        <strong>{panel.name}{panel.hidden.then_some(" (hidden)")}</strong>
-                        <small>
-                            {move || match status.get() {
-                                None => view! { "…" }.into_any(),
-                                Some(Ok(info)) => view! {
-                                    <span class="dot online">"●"</span>" "{info.version}
-                                }.into_any(),
-                                Some(Err(_)) => view! { <span class="dot offline">"●"</span>" offline" }.into_any(),
-                            }}
-                        </small>
-                    </div>
-                }
-            }).collect_view()}
+        <div
+            class="panel"
+            class:active=move || ctx.panel.get().as_deref() == Some(is_current.as_str())
+            on:click=move |_| {
+                ctx.panel.set(Some(click.clone()));
+                ctx.refresh.update(|n| *n += 1);
+            }
+        >
+            <strong>{panel.name}{panel.hidden.then_some(" (hidden)")}</strong>
+            <small>
+                {move || match status.get() {
+                    None => view! { "…" }.into_any(),
+                    Some(Ok(info)) => view! {
+                        <span class="dot online">"●"</span>" "{info.version}
+                    }.into_any(),
+                    Some(Err(_)) => view! { <span class="dot offline">"●"</span>" offline" }.into_any(),
+                }}
+            </small>
         </div>
     }
 }
