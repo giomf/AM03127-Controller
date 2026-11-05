@@ -1,9 +1,11 @@
 default:
     @just --list
 
-# Save the debug build as a raw firmware image.
+# Build the release firmware and save it as a raw image (firmware.bin) for OTA.
+# Set WIFI_SSID and WIFI_PASS first, they are compiled in.
 save-image:
-    espflash save-image ./am03127-firmware/target/riscv32imc-unknown-none-elf/debug/am03127-firmware firmware.bin --chip esp32c3
+    cd am03127-firmware && cargo build --release
+    espflash save-image ./am03127-firmware/target/riscv32imc-unknown-none-elf/release/am03127-firmware firmware.bin --chip esp32c3 --partition-table ./am03127-firmware/partition-table.csv
 
 # Upload firmware.bin to the OTA endpoint of the device.
 # Usage: just ota <device-ip>
