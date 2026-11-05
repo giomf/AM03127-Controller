@@ -194,7 +194,9 @@ impl Panel {
 
         let command = page.command(DEFAULT_PANEL_ID);
 
-        self.uart.lock().await.write(&command).await?;
+        // Hold the UART until flash is written so concurrent saves keep panel and flash in sync.
+        let mut uart = self.uart.lock().await;
+        uart.write(&command).await?;
         self.page_storage.write(page_id, PageWrapper(page)).await?;
 
         Ok(())
@@ -248,7 +250,8 @@ impl Panel {
 
         let command = DeletePage::new(page_id).command(DEFAULT_PANEL_ID);
 
-        self.uart.lock().await.write(&command).await?;
+        let mut uart = self.uart.lock().await;
+        uart.write(&command).await?;
         self.page_storage.delete(page_id).await?;
 
         Ok(())
@@ -275,7 +278,8 @@ impl Panel {
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 
         let command = schedule.command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(&command).await?;
+        let mut uart = self.uart.lock().await;
+        uart.write(&command).await?;
         self.schedule_storage
             .write(schedule_id, schedule.into())
             .await?;
@@ -330,7 +334,8 @@ impl Panel {
         log::info!("{LOGGER_NAME}: Deleting schedule \"{schedule_id}\"");
 
         let command = DeleteSchedule::new(schedule_id).command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(&command).await?;
+        let mut uart = self.uart.lock().await;
+        uart.write(&command).await?;
         self.schedule_storage.delete(schedule_id).await?;
 
         Ok(())
@@ -348,7 +353,8 @@ impl Panel {
         log::info!("{LOGGER_NAME}: Deleting all");
 
         let command = DeleteAll {}.command(DEFAULT_PANEL_ID);
-        self.uart.lock().await.write(&command).await?;
+        let mut uart = self.uart.lock().await;
+        uart.write(&command).await?;
         self.page_storage.delete_all().await?;
         self.schedule_storage.delete_all().await?;
         Ok(())
