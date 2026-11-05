@@ -178,6 +178,9 @@ impl Panel {
     pub async fn set_page(&self, page: Page) -> Result<(), Error> {
         let page_id = page.id;
         log::info!("{LOGGER_NAME}: Setting page \"{page_id}\"");
+        if !is_page_id_valid(page_id) {
+            return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
+        }
         log::debug!("{LOGGER_NAME}: {:?}", page);
 
         let command = page.command(DEFAULT_PANEL_ID);
@@ -255,6 +258,9 @@ impl Panel {
     pub async fn set_schedule(&self, schedule: Schedule) -> Result<(), Error> {
         let schedule_id = schedule.id;
         log::info!("{LOGGER_NAME}: Setting schedule \"{schedule_id}\"");
+        if !is_schedule_id_valid(schedule_id) {
+            return Err(Error::BadRequest("Schedule ID not valid".try_into().unwrap()));
+        }
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 
         let command = schedule.command(DEFAULT_PANEL_ID);
@@ -336,4 +342,28 @@ impl Panel {
         self.schedule_storage.delete_all().await?;
         Ok(())
     }
+}
+
+/// Checks if an ID is valid (A-Z)
+///
+/// # Arguments
+/// * `id` - The ID to check
+///
+/// # Returns
+/// * `true` if the ID is valid (A-Z)
+/// * `false` otherwise
+pub fn is_page_id_valid(id: char) -> bool {
+    id >= 'A' && id <= 'Z'
+}
+
+/// Checks if an ID is a valid schedule ID (A-E)
+///
+/// # Arguments
+/// * `id` - The ID to check
+///
+/// # Returns
+/// * `true` if the ID is valid (A-E)
+/// * `false` otherwise
+pub fn is_schedule_id_valid(id: char) -> bool {
+    id >= 'A' && id <= 'E'
 }

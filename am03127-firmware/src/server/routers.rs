@@ -11,7 +11,11 @@ use picoserve::{
 use serde::Serialize;
 
 use super::AppState;
-use crate::{error::Error, panel::Panel, server::ota::OverTheAirUpdate};
+use crate::{
+    error::Error,
+    panel::{Panel, is_page_id_valid, is_schedule_id_valid},
+    server::ota::OverTheAirUpdate,
+};
 
 /// Logger name for router-related log messages
 const LOGGER_NAME: &str = "Router";
@@ -143,6 +147,10 @@ pub fn pages_router() -> impl MethodHandler<AppState> {
     })
     .post(
         |State(panel): State<&'static Panel>, Json::<Vec<Page>>(pages)| async move {
+            // Check all first so a bad entry does not leave a half-applied upload.
+            if pages.iter().any(|page| !is_page_id_valid(page.id)) {
+                return Err(Error::BadRequest("Page ID not valid".try_into().unwrap()));
+            }
             for page in pages {
                 if let Err(err) = panel.set_page(page).await {
                     log::error!("{LOGGER_NAME}: {err}");
@@ -241,6 +249,10 @@ pub fn schedules_router() -> impl MethodHandler<AppState> {
     })
     .post(
         |State(panel): State<&'static Panel>, Json::<Vec<Schedule>>(schedules)| async move {
+            // Check all first so a bad entry does not leave a half-applied upload.
+            if schedules.iter().any(|schedule| !is_schedule_id_valid(schedule.id)) {
+                return Err(Error::BadRequest("Schedule ID not valid".try_into().unwrap()));
+            }
             for schedule in schedules {
                 if let Err(err) = panel.set_schedule(schedule).await {
                     log::error!("{LOGGER_NAME}: {err}");
@@ -265,28 +277,4 @@ pub fn delete_all_router() -> impl MethodHandler<AppState> {
 }
 pub fn ota_router() -> impl MethodHandler<AppState> {
     put_service(OverTheAirUpdate)
-}
-
-/// Checks if an ID is valid (A-Z)
-///
-/// # Arguments
-/// * `id` - The ID to check
-///
-/// # Returns
-/// * `true` if the ID is valid (A-Z)
-/// * `false` otherwise
-fn is_page_id_valid(id: char) -> bool {
-    id >= 'A' && id <= 'Z'
-}
-
-/// Checks if an ID is valid page(A-Z)
-///
-/// # Arguments
-/// * `id` - The ID to check
-///
-/// # Returns
-/// * `true` if the ID is valid (A-Z)
-/// * `false` otherwise
-fn is_schedule_id_valid(id: char) -> bool {
-    id >= 'A' && id <= 'E'
 }
