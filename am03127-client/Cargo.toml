@@ -6,6 +6,13 @@ edition = "2024"
 [dependencies]
 am03127-commands = { path = "../am03127-commands" }
 anyhow = "1"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+
+# In the browser use fetch directly; reqwest pulls in url/idna and roughly doubles the wasm size.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+gloo-net = { version = "0.6", default-features = false, features = ["http", "json"] }
+js-sys = "0.3"

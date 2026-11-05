@@ -4,4 +4,13 @@ members = [
     "am03127-commands",
     "am03127-client",
     "am03127-cli",
+    "am03127-webui",
 ]
+
+# Size-optimized profile for the web UI, which is embedded in the firmware flash.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

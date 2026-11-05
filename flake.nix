@@ -44,6 +44,7 @@
         buildInputs = [
           toolchain
           pkgs.just
+          pkgs.trunk
           pkgs.esp-generate
           pkgs.espflash
           pkgs.jre21_minimal

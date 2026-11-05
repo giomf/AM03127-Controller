@@ -15,11 +15,11 @@ pub struct Schedule {
     /// Unique identifier for the schedule (A-Z)
     pub id: char,
     /// Start time for the schedule
-    from: ScheduleDateTime,
+    pub from: ScheduleDateTime,
     /// End time for the schedule
-    to: ScheduleDateTime,
+    pub to: ScheduleDateTime,
     /// List of page IDs to display during this schedule
-    pages: String,
+    pub pages: String,
 }
 
 impl Schedule {

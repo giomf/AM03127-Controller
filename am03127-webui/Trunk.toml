@@ -1,0 +1,18 @@
+# `trunk serve` forwards the panel API to the mock (mock.py). Point these at a
+# real panel's IP to develop against hardware.
+[[proxy]]
+backend = "http://127.0.0.1:3000/status"
+[[proxy]]
+backend = "http://127.0.0.1:3000/page"
+[[proxy]]
+backend = "http://127.0.0.1:3000/pages"
+[[proxy]]
+backend = "http://127.0.0.1:3000/schedule"
+[[proxy]]
+backend = "http://127.0.0.1:3000/schedules"
+[[proxy]]
+backend = "http://127.0.0.1:3000/clock"
+[[proxy]]
+backend = "http://127.0.0.1:3000/reset"
+[[proxy]]
+backend = "http://127.0.0.1:3000/ota"

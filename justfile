@@ -13,3 +13,9 @@ ota ip:
          -H "Content-Type: application/octet-stream" \
          --data-binary @firmware.bin \
          http://{{ip}}/ota
+
+# Serve the web UI with live reload against the mock panel (am03127-webui/mock.py).
+webui:
+    #!/usr/bin/env bash
+    python3 am03127-webui/mock.py & trap "kill $!" EXIT
+    cd am03127-webui && trunk serve --port 8080

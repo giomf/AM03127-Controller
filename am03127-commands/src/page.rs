@@ -53,6 +53,30 @@ pub enum Leading {
     Xopen,
 }
 
+impl Leading {
+    /// All variants, e.g. for building selection lists.
+    pub const ALL: &[Self] = &[
+        Self::BlockMove,
+        Self::CurtainDown,
+        Self::CurtainUp,
+        Self::Hold,
+        Self::Immediate,
+        Self::PenAmplus,
+        Self::PenHelloWorld,
+        Self::PenWelcome,
+        Self::Random,
+        Self::ScrollDown,
+        Self::ScrollLeft,
+        Self::ScrollRight,
+        Self::ScrollUp,
+        Self::Snow,
+        Self::Twinkle,
+        Self::Vclose,
+        Self::Vopen,
+        Self::Xopen,
+    ];
+}
+
 impl Display for Leading {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let character = match self {
@@ -108,6 +132,23 @@ pub enum Lagging {
     Vopen,
     /// Image will be disappeared from center and extend to 4 sides
     Xopen,
+}
+
+impl Lagging {
+    /// All variants, e.g. for building selection lists.
+    pub const ALL: &[Self] = &[
+        Self::CurtainDown,
+        Self::CurtainUp,
+        Self::Hold,
+        Self::Immediate,
+        Self::ScrollDown,
+        Self::ScrollLeft,
+        Self::ScrollRight,
+        Self::ScrollUp,
+        Self::Vclose,
+        Self::Vopen,
+        Self::Xopen,
+    ];
 }
 
 impl Display for Lagging {
@@ -183,6 +224,32 @@ pub enum WaitingModeAndSpeed {
     SlowestSong3,
 }
 
+impl WaitingModeAndSpeed {
+    /// All variants, e.g. for building selection lists.
+    pub const ALL: &[Self] = &[
+        Self::FastestBlinking,
+        Self::FastestNormal,
+        Self::FastestSong1,
+        Self::FastestSong2,
+        Self::FastestSong3,
+        Self::MiddleFastBlinking,
+        Self::MiddleFastNormal,
+        Self::MiddleFastSong1,
+        Self::MiddleFastSong2,
+        Self::MiddleFastSong3,
+        Self::MiddleSlowBlinking,
+        Self::MiddleSlowNormal,
+        Self::MiddleSlowSong1,
+        Self::MiddleSlowSong2,
+        Self::MiddleSlowSong3,
+        Self::SlowestBlinking,
+        Self::SlowestNormal,
+        Self::SlowestSong1,
+        Self::SlowestSong2,
+        Self::SlowestSong3,
+    ];
+}
+
 impl Display for WaitingModeAndSpeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let character = match self {
@@ -225,6 +292,10 @@ impl WaitingTime {
     pub fn new(value: u8) -> Self {
         // Max to 25 == Z
         WaitingTime(value.min(25))
+    }
+
+    pub fn value(&self) -> u8 {
+        self.0
     }
 }
 

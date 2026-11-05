@@ -1,0 +1,577 @@
+use am03127_client::PanelClient;
+use am03127_commands::{
+    page::{Lagging, Leading, Page, WaitingModeAndSpeed, WaitingTime},
+    realtime_clock::DateTime,
+    schedule::{Schedule, ScheduleDateTime},
+};
+use anyhow::{Result, anyhow};
+use leptos::{html, prelude::*, task::spawn_local};
+use serde::{Serialize, de::DeserializeOwned};
+use wasm_bindgen_futures::JsFuture;
+
+const PAGE_IDS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const SCHEDULE_IDS: &str = "ABCDE";
+const TABS: [&str; 2] = ["Content", "Device"];
+
+/// Shared UI state: the notice bar and a counter that lists re-fetch on.
+#[derive(Clone, Copy)]
+struct Ctx {
+    notice: RwSignal<Option<Result<String, String>>>,
+    refresh: RwSignal<u32>,
+}
+
+/// The UI is served by the panel itself, so the API lives on the same host.
+fn client() -> PanelClient {
+    PanelClient::new(&window().location().host().unwrap())
+}
+
+/// Runs an API call in the background, then shows `done` (or the error) and refreshes the lists.
+fn run(done: &'static str, call: impl Future<Output = Result<()>> + 'static) {
+    let ctx = expect_context::<Ctx>();
+    ctx.notice.set(Some(Ok("Working…".into())));
+    spawn_local(async move {
+        match call.await {
+            Ok(()) => {
+                let notice = Some(Ok(done.to_string()));
+                ctx.notice.set(notice.clone());
+                ctx.refresh.update(|n| *n += 1);
+                // Hide the toast again unless a newer one replaced it meanwhile.
+                set_timeout(
+                    move || {
+                        if ctx.notice.get_untracked() == notice {
+                            ctx.notice.set(None);
+                        }
+                    },
+                    std::time::Duration::from_secs(3),
+                );
+            }
+            Err(err) => ctx.notice.set(Some(Err(err.to_string()))),
+        }
+    });
+}
+
+/// Serde name of an enum variant, e.g. `ScrollLeft` -> "scroll_left".
+fn name<T: Serialize>(value: &T) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_owned))
+        .unwrap_or_default()
+}
+
+fn parse<T: DeserializeOwned + Default>(name: &str) -> T {
+    serde_json::from_value(serde_json::Value::String(name.into())).unwrap_or_default()
+}
+
+/// "scroll_left" -> "Scroll left"
+fn pretty(name: &str) -> String {
+    let text = name.replace('_', " ");
+    let mut chars = text.chars();
+    chars
+        .next()
+        .map(|c| c.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
+}
+
+/// `<input type="datetime-local">` value -> panel time. The panel only stores two-digit years.
+fn parse_local(value: &str) -> Option<ScheduleDateTime> {
+    let (date, time) = value.split_once('T')?;
+    let mut date = date.split('-').map(|n| n.parse::<u16>().ok());
+    let mut time = time.split(':').map(|n| n.parse::<u8>().ok());
+    Some(ScheduleDateTime {
+        year: (date.next()?? % 100) as u8,
+        month: date.next()?? as u8,
+        day: date.next()?? as u8,
+        hour: time.next()??,
+        minute: time.next()??,
+    })
+}
+
+fn format_local(dt: &ScheduleDateTime) -> String {
+    format!(
+        "20{:02}-{:02}-{:02}T{:02}:{:02}",
+        dt.year, dt.month, dt.day, dt.hour, dt.minute
+    )
+}
+
+fn browser_now() -> Result<DateTime> {
+    let now = js_sys::Date::new_0();
+    let month = now.get_month() as u8 + 1;
+    let date = time::Date::from_calendar_date(
+        now.get_full_year() as i32,
+        time::Month::try_from(month)?,
+        now.get_date() as u8,
+    )?;
+    Ok(DateTime {
+        year: (now.get_full_year() % 100) as u8,
+        week: date.iso_week(),
+        month,
+        day: now.get_date() as u8,
+        hour: now.get_hours() as u8,
+        minute: now.get_minutes() as u8,
+        second: now.get_seconds() as u8,
+    })
+}
+
+#[component]
+fn Select(options: Vec<(String, String)>, value: RwSignal<String>) -> impl IntoView {
+    view! {
+        <select on:change=move |ev| value.set(event_target_value(&ev))>
+            {options.into_iter().map(|(option, label)| {
+                let current = option.clone();
+                view! { <option value=option selected=move || value.get() == current>{label}</option> }
+            }).collect_view()}
+        </select>
+    }
+}
+
+/// Dropdown entries for serde names, labelled for humans.
+fn choices(names: impl IntoIterator<Item = String>) -> Vec<(String, String)> {
+    names.into_iter().map(|n| (n.clone(), pretty(&n))).collect()
+}
+
+fn names<T: Serialize>(all: &[T]) -> Vec<String> {
+    all.iter().map(name).collect()
+}
+
+/// IDs from `all` that are not taken yet.
+fn free_ids(all: &str, used: impl Fn(char) -> bool) -> Vec<String> {
+    all.chars().filter(|&c| !used(c)).map(String::from).collect()
+}
+
+/// The panel's waiting mode is speed x style (e.g. `middle_fast_song1`); the UI picks each separately.
+const SPEEDS: [&str; 4] = ["fastest", "middle_fast", "middle_slow", "slowest"];
+const STYLES: [&str; 5] = ["normal", "blinking", "song1", "song2", "song3"];
+
+fn split_mode(mode: &WaitingModeAndSpeed) -> (String, String) {
+    let name = name(mode);
+    let (speed, style) = name.rsplit_once('_').unwrap_or(("fastest", "normal"));
+    (speed.into(), style.into())
+}
+
+/// Waiting time steps are half seconds, starting at 0.5 s.
+fn seconds(wait: u8) -> String {
+    format!("{:.1} s", (wait as f32 + 1.0) / 2.0)
+}
+
+/// One table row. Existing pages show as text until "Edit"; the trailing new row
+/// (`page: None`) is always in edit mode and offers only the free IDs.
+#[component]
+fn PageRow(page: Option<Page>, #[prop(optional)] free: Vec<String>) -> impl IntoView {
+    let is_new = page.is_none();
+    let first_free = free.first().and_then(|f| f.chars().next()).unwrap_or('A');
+    let page = page.unwrap_or_else(|| {
+        Page::new(
+            first_free,
+            String::new(),
+            Leading::default(),
+            Lagging::default(),
+            WaitingModeAndSpeed::default(),
+            WaitingTime::new(0),
+        )
+    });
+    let page_id = page.id;
+
+    let editing = RwSignal::new(is_new);
+    let id = RwSignal::new(page.id.to_string());
+    let message = RwSignal::new(String::new());
+    let leading = RwSignal::new(String::new());
+    let lagging = RwSignal::new(String::new());
+    let speed = RwSignal::new(String::new());
+    let style = RwSignal::new(String::new());
+    let wait = RwSignal::new(0u8);
+
+    let load = move |page: &Page| {
+        let (page_speed, page_style) = split_mode(&page.waiting_mode_and_speed);
+        message.set(page.message.clone());
+        leading.set(name(&page.leading));
+        lagging.set(name(&page.lagging));
+        speed.set(page_speed);
+        style.set(page_style);
+        wait.set(page.waiting_time.value());
+    };
+    load(&page);
+    let original = StoredValue::new(page);
+
+    let save = move |_| {
+        let page = Page::new(
+            id.get().chars().next().unwrap_or('A'),
+            message.get(),
+            parse(&leading.get()),
+            parse(&lagging.get()),
+            parse(&format!("{}_{}", speed.get(), style.get())),
+            WaitingTime::new(wait.get()),
+        );
+        let done = if is_new { "Page added" } else { "Page saved" };
+        run(done, async move { client().set_page(&page).await });
+    };
+    let cancel = move |_| {
+        original.with_value(load);
+        editing.set(false);
+    };
+    let delete = move |_| run("Page deleted", async move { client().delete_page(page_id).await });
+
+    move || {
+        if !editing.get() {
+            return view! {
+                <tr>
+                    <td>{page_id.to_string()}</td>
+                    <td>{message.get()}</td>
+                    <td>{pretty(&leading.get())}</td>
+                    <td>{pretty(&lagging.get())}</td>
+                    <td>{pretty(&speed.get())}</td>
+                    <td>{pretty(&style.get())}</td>
+                    <td>{seconds(wait.get())}</td>
+                    <td class="actions">
+                        <button on:click=move |_| editing.set(true)>"Edit"</button>
+                        <button on:click=delete>"Delete"</button>
+                    </td>
+                </tr>
+            }
+            .into_any();
+        }
+        let id_cell = if is_new {
+            view! { <Select options=choices(free.clone()) value=id /> }.into_any()
+        } else {
+            page_id.to_string().into_any()
+        };
+        view! {
+            <tr class="editing">
+                <td>{id_cell}</td>
+                <td><input type="text" placeholder="Message" bind:value=message /></td>
+                <td><Select options=choices(names(Leading::ALL)) value=leading /></td>
+                <td><Select options=choices(names(Lagging::ALL)) value=lagging /></td>
+                <td><Select options=choices(SPEEDS.map(String::from)) value=speed /></td>
+                <td><Select options=choices(STYLES.map(String::from)) value=style /></td>
+                <td>
+                    <select on:change=move |ev| wait.set(event_target_value(&ev).parse().unwrap_or(0))>
+                        {(0..=25u8).map(|w| view! {
+                            <option value=w.to_string() selected=move || wait.get() == w>{seconds(w)}</option>
+                        }).collect_view()}
+                    </select>
+                </td>
+                <td class="actions">
+                    {if is_new {
+                        view! { <button class="primary" on:click=save>"Add"</button> }.into_any()
+                    } else {
+                        view! {
+                            <button class="primary" on:click=save>"Save"</button>
+                            <button on:click=cancel>"Cancel"</button>
+                        }
+                        .into_any()
+                    }}
+                </td>
+            </tr>
+        }
+        .into_any()
+    }
+}
+
+#[component]
+fn Pages() -> impl IntoView {
+    let ctx = expect_context::<Ctx>();
+    let pages = LocalResource::new(move || {
+        ctx.refresh.track();
+        async { client().get_pages().await.map_err(|e| e.to_string()) }
+    });
+
+    view! {
+        <section>
+            <h2>"Pages"</h2>
+            <Suspense fallback=|| view! { <p>"Loading…"</p> }>
+                {move || pages.get().map(|result| match result {
+                    Ok(mut list) => {
+                        list.sort_by_key(|p| p.id);
+                        let free = free_ids(PAGE_IDS, |c| list.iter().any(|p| p.id == c));
+                        view! {
+                            <div class="table">
+                                <table>
+                                    <thead><tr>
+                                        <th>"ID"</th><th>"Message"</th><th>"In"</th><th>"Out"</th>
+                                        <th>"Speed"</th><th>"Style"</th><th>"Wait"</th><th></th>
+                                    </tr></thead>
+                                    <tbody>
+                                        {list.into_iter().map(|page| view! { <PageRow page=Some(page) /> }).collect_view()}
+                                        {(!free.is_empty()).then(|| view! { <PageRow page=None free=free /> })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        .into_any()
+                    }
+                    Err(err) => view! { <p class="error">{err}</p> }.into_any(),
+                })}
+            </Suspense>
+        </section>
+    }
+}
+
+/// Same pattern as [`PageRow`].
+#[component]
+fn ScheduleRow(schedule: Option<Schedule>, #[prop(optional)] free: Vec<String>) -> impl IntoView {
+    let is_new = schedule.is_none();
+    let first_free = free.first().and_then(|f| f.chars().next()).unwrap_or('A');
+    let schedule = schedule.unwrap_or_else(|| {
+        Schedule::new(first_free, ScheduleDateTime::default(), ScheduleDateTime::default(), String::new())
+    });
+    let schedule_id = schedule.id;
+
+    let editing = RwSignal::new(is_new);
+    let id = RwSignal::new(schedule.id.to_string());
+    let from = RwSignal::new(String::new());
+    let to = RwSignal::new(String::new());
+    let pages = RwSignal::new(String::new());
+
+    let load = move |schedule: &Schedule| {
+        // A blank new row should show empty pickers, not 2000-00-00.
+        let local = |dt: &ScheduleDateTime| if is_new { String::new() } else { format_local(dt) };
+        from.set(local(&schedule.from));
+        to.set(local(&schedule.to));
+        pages.set(schedule.pages.clone());
+    };
+    load(&schedule);
+    let original = StoredValue::new(schedule);
+
+    let save = move |_| {
+        let ctx = expect_context::<Ctx>();
+        let (Some(start), Some(end)) = (parse_local(&from.get()), parse_local(&to.get())) else {
+            ctx.notice.set(Some(Err("Pick a start and an end time".into())));
+            return;
+        };
+        let page_ids = pages.get().to_uppercase();
+        if page_ids.is_empty() || !page_ids.chars().all(|c| PAGE_IDS.contains(c)) {
+            ctx.notice.set(Some(Err("Pages must be page IDs in display order, e.g. ABC".into())));
+            return;
+        }
+        let schedule = Schedule::new(id.get().chars().next().unwrap_or('A'), start, end, page_ids);
+        let done = if is_new { "Schedule added" } else { "Schedule saved" };
+        run(done, async move { client().set_schedule(&schedule).await });
+    };
+    let cancel = move |_| {
+        original.with_value(load);
+        editing.set(false);
+    };
+    let delete = move |_| run("Schedule deleted", async move { client().delete_schedule(schedule_id).await });
+
+    move || {
+        if !editing.get() {
+            return view! {
+                <tr>
+                    <td>{schedule_id.to_string()}</td>
+                    <td>{from.get().replace('T', " ")}</td>
+                    <td>{to.get().replace('T', " ")}</td>
+                    <td>{pages.get()}</td>
+                    <td class="actions">
+                        <button on:click=move |_| editing.set(true)>"Edit"</button>
+                        <button on:click=delete>"Delete"</button>
+                    </td>
+                </tr>
+            }
+            .into_any();
+        }
+        let id_cell = if is_new {
+            view! { <Select options=choices(free.clone()) value=id /> }.into_any()
+        } else {
+            schedule_id.to_string().into_any()
+        };
+        view! {
+            <tr class="editing">
+                <td>{id_cell}</td>
+                <td><input type="datetime-local" bind:value=from /></td>
+                <td><input type="datetime-local" bind:value=to /></td>
+                <td><input type="text" placeholder="ABC" bind:value=pages /></td>
+                <td class="actions">
+                    {if is_new {
+                        view! { <button class="primary" on:click=save>"Add"</button> }.into_any()
+                    } else {
+                        view! {
+                            <button class="primary" on:click=save>"Save"</button>
+                            <button on:click=cancel>"Cancel"</button>
+                        }
+                        .into_any()
+                    }}
+                </td>
+            </tr>
+        }
+        .into_any()
+    }
+}
+
+#[component]
+fn Schedules() -> impl IntoView {
+    let ctx = expect_context::<Ctx>();
+    let schedules = LocalResource::new(move || {
+        ctx.refresh.track();
+        async { client().get_schedules().await.map_err(|e| e.to_string()) }
+    });
+
+    view! {
+        <section>
+            <h2>"Schedules"</h2>
+            <Suspense fallback=|| view! { <p>"Loading…"</p> }>
+                {move || schedules.get().map(|result| match result {
+                    Ok(mut list) => {
+                        list.sort_by_key(|s| s.id);
+                        let free = free_ids(SCHEDULE_IDS, |c| list.iter().any(|s| s.id == c));
+                        view! {
+                            <div class="table">
+                                <table>
+                                    <thead><tr>
+                                        <th>"ID"</th><th>"From"</th><th>"To"</th><th>"Pages"</th><th></th>
+                                    </tr></thead>
+                                    <tbody>
+                                        {list.into_iter().map(|s| view! { <ScheduleRow schedule=Some(s) /> }).collect_view()}
+                                        {(!free.is_empty()).then(|| view! { <ScheduleRow schedule=None free=free /> })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        .into_any()
+                    }
+                    Err(err) => view! { <p class="error">{err}</p> }.into_any(),
+                })}
+            </Suspense>
+        </section>
+    }
+}
+
+#[component]
+fn Device() -> impl IntoView {
+    let file = NodeRef::<html::Input>::new();
+    let file_name = RwSignal::new(None::<String>);
+
+    let sync_clock = move |_| {
+        run("Clock set to this browser's time", async move {
+            client().set_clock(&browser_now()?).await
+        })
+    };
+
+    let upload = move |_| {
+        let Some(selected) = file.get().and_then(|input| input.files()).and_then(|f| f.get(0)) else {
+            expect_context::<Ctx>().notice.set(Some(Err("Choose a firmware file first".into())));
+            return;
+        };
+        run("Firmware uploaded, the panel is restarting", async move {
+            let buffer = JsFuture::from(selected.array_buffer())
+                .await
+                .map_err(|e| anyhow!("could not read file: {e:?}"))?;
+            client().update_firmware(&js_sys::Uint8Array::new(&buffer).to_vec()).await
+        });
+    };
+
+    let reset = move |_| {
+        if window().confirm_with_message("Delete all pages and schedules?").unwrap_or(false) {
+            run("All pages and schedules deleted", async move { client().reset().await });
+        }
+    };
+
+    view! {
+        <section class="cards">
+            <div class="card">
+                <h2>"Clock"</h2>
+                <p>"Set the panel's clock to the current time of this browser."</p>
+                <button class="primary" on:click=sync_clock>"Sync clock"</button>
+            </div>
+            <div class="card">
+                <h2>"Firmware update"</h2>
+                <p>"Upload a firmware image (.bin). The panel restarts after the upload."</p>
+                <label class="file">
+                    <input
+                        type="file" accept=".bin" node_ref=file
+                        on:change=move |_| file_name.set(
+                            file.get().and_then(|i| i.files()).and_then(|f| f.get(0))
+                                .map(|f| format!("{} ({} KB)", f.name(), (f.size() / 1024.0).round()))
+                        )
+                    />
+                    {move || file_name.get().unwrap_or_else(|| "Choose file…".into())}
+                </label>
+                <button class="primary" disabled=move || file_name.get().is_none() on:click=upload>"Upload"</button>
+            </div>
+            <div class="card danger-zone">
+                <h2>"Danger zone"</h2>
+                <p>"Delete all pages and schedules from the panel. This cannot be undone."</p>
+                <button class="danger" on:click=reset>"Delete everything"</button>
+            </div>
+        </section>
+    }
+}
+
+#[component]
+fn App() -> impl IntoView {
+    let ctx = Ctx {
+        notice: RwSignal::new(None),
+        refresh: RwSignal::new(0),
+    };
+    provide_context(ctx);
+    let tab = RwSignal::new(TABS[0]);
+
+    let status = LocalResource::new(|| async { client().get_status().await.map_err(|e| e.to_string()) });
+
+    view! {
+        <header>
+            <h1>"AM03127-Controller"</h1>
+            <Suspense fallback=|| "">
+                {move || status.get().map(|s| match s {
+                    Ok(info) => format!("Firmware {} ({} {})", info.version, info.build_date, info.build_time),
+                    Err(err) => format!("Panel unreachable: {err}"),
+                })}
+            </Suspense>
+        </header>
+        {move || ctx.notice.get().map(|notice| {
+            let (class, text) = match notice {
+                Ok(text) => ("toast", text),
+                Err(text) => ("toast error", format!("{text} (click to dismiss)")),
+            };
+            view! { <div class=class role="status" on:click=move |_| ctx.notice.set(None)>{text}</div> }
+        })}
+        <nav>
+            {TABS.iter().map(|&label| view! {
+                <button class:active=move || tab.get() == label on:click=move |_| tab.set(label)>
+                    {label}
+                </button>
+            }).collect_view()}
+        </nav>
+        <main>
+            {move || match tab.get() {
+                "Device" => view! { <Device /> }.into_any(),
+                _ => view! { <Pages /> <Schedules /> }.into_any(),
+            }}
+        </main>
+    }
+}
+
+fn main() {
+    leptos::mount::mount_to_body(App);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn datetime_local_roundtrip() {
+        let dt = parse_local("2026-11-05T14:30").unwrap();
+        assert_eq!((dt.year, dt.month, dt.day, dt.hour, dt.minute), (26, 11, 5, 14, 30));
+        assert_eq!(format_local(&dt), "2026-11-05T14:30");
+        assert!(parse_local("").is_none());
+        assert!(parse_local("2026-11-05").is_none());
+    }
+
+    #[test]
+    fn waiting_mode_split() {
+        assert_eq!(
+            split_mode(&WaitingModeAndSpeed::MiddleFastSong1),
+            ("middle_fast".into(), "song1".into())
+        );
+        for mode in WaitingModeAndSpeed::ALL {
+            let (speed, style) = split_mode(mode);
+            assert_eq!(name(&parse::<WaitingModeAndSpeed>(&format!("{speed}_{style}"))), name(mode));
+        }
+    }
+
+    #[test]
+    fn enum_names_roundtrip() {
+        assert_eq!(name(&Leading::ScrollLeft), "scroll_left");
+        assert!(matches!(parse::<Leading>("scroll_left"), Leading::ScrollLeft));
+        assert_eq!(pretty("scroll_left"), "Scroll left");
+    }
+}

@@ -1,0 +1,16 @@
+[package]
+name = "am03127-webui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+am03127-client = { path = "../am03127-client" }
+am03127-commands = { path = "../am03127-commands" }
+anyhow = "1"
+js-sys = "0.3"
+leptos = { version = "0.8", features = ["csr"] }
+serde = "1"
+serde_json = "1"
+time = { version = "0.3", default-features = false }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["File", "FileList"] }

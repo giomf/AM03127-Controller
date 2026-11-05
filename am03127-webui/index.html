@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AM03127-Controller</title>
+    <link data-trunk rel="rust" data-cargo-profile="wasm-release" data-wasm-opt="z"/>
+    <style>
+        :root { color-scheme: light dark; --accent: #2563eb; --danger: #dc2626; --line: #8884; }
+        body { font: 15px/1.5 system-ui, sans-serif; max-width: 1400px; margin: 0 auto; padding: 0 16px 48px; }
+        header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 16px; border-bottom: 1px solid var(--line); }
+        header h1 { font-size: 1.4rem; margin: 16px 0 8px; }
+        nav { display: flex; gap: 4px; margin-top: 16px; border-bottom: 1px solid var(--line); }
+        nav button { border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 16px; }
+        nav button.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+        section { margin-top: 16px; }
+        section + section { margin-top: 40px; }
+        h2 { font-size: 1.15rem; margin: 0 0 8px; }
+        h3 { font-size: 1rem; margin: 24px 0 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+        td.actions { text-align: right; white-space: nowrap; }
+        td.actions button + button { margin-left: 4px; }
+        .table { overflow-x: auto; }
+        tr.editing td { padding: 4px; }
+        td input, td select { width: 100%; box-sizing: border-box; min-width: 0; }
+        td input[type=text] { min-width: 10em; }
+        label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+        input, select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); }
+        button { cursor: pointer; background: transparent; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        button.danger { border-color: var(--danger); color: var(--danger); }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .card { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+        .card h2 { margin: 0; }
+        .card p { margin: 0; flex: 1; opacity: 0.8; }
+        .card.danger-zone { border-color: var(--danger); }
+        .file { flex-direction: row; align-items: center; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 6px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file input { display: none; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .toast { position: fixed; right: 16px; bottom: 16px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 8px; background: #16a34a; color: #fff; box-shadow: 0 4px 16px #0004; cursor: pointer; animation: toast-in 0.2s ease-out; }
+        .toast.error { background: var(--danger); color: #fff; }
+        @keyframes toast-in { from { transform: translateY(16px); opacity: 0; } }
+        .error { color: var(--danger); }
+        @media (max-width: 600px) { table { font-size: 0.85rem; } }
+    </style>
+</head>
+<body></body>
+</html>
