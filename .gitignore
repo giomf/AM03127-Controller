@@ -7,3 +7,4 @@ firmware.bin
 result/
 panel-config.toml
 am03127-webui/dist/
+am03127-webui/dist-firmware/

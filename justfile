@@ -1,9 +1,15 @@
 default:
     @just --list
 
+# Build the web UI the firmware embeds: device variant, stable file names, gzipped.
+# Needed before any firmware build with the default `web_interface` feature.
+webui-firmware:
+    cd am03127-webui && trunk build --release --filehash false --dist dist-firmware
+    gzip -9knf am03127-webui/dist-firmware/index.html am03127-webui/dist-firmware/am03127-webui.js am03127-webui/dist-firmware/am03127-webui_bg.wasm
+
 # Build the release firmware and save it as a raw image (firmware.bin) for OTA.
 # Set WIFI_SSID and WIFI_PASS first, they are compiled in.
-save-image:
+save-image: webui-firmware
     cd am03127-firmware && cargo build --release
     espflash save-image ./am03127-firmware/target/riscv32imc-unknown-none-elf/release/am03127-firmware firmware.bin --chip esp32c3 --partition-table ./am03127-firmware/partition-table.csv
 

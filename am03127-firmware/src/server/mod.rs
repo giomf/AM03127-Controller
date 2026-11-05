@@ -68,7 +68,35 @@ impl AppWithStateBuilder for ServerProperties {
             .layer(PreHandlerLogLayer);
 
         #[cfg(feature = "web_interface")]
-        let router = router.route("/", routers::static_router());
+        let router = {
+            use picoserve::response::File;
+
+            // The web UI (am03127-webui without the `server` feature), built by `just webui-firmware`.
+            macro_rules! webui_file {
+                ($name:literal) => {
+                    include_bytes!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../am03127-webui/dist-firmware/",
+                        $name,
+                        ".gz"
+                    ))
+                };
+            }
+
+            router
+                .route(
+                    "/",
+                    routers::webui_router(File::MIME_HTML, webui_file!("index.html")),
+                )
+                .route(
+                    "/am03127-webui.js",
+                    routers::webui_router(File::MIME_JS, webui_file!("am03127-webui.js")),
+                )
+                .route(
+                    "/am03127-webui_bg.wasm",
+                    routers::webui_router("application/wasm", webui_file!("am03127-webui_bg.wasm")),
+                )
+        };
 
         router
     }

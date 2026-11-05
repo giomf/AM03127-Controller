@@ -3,10 +3,10 @@ use alloc::vec::Vec;
 
 use am03127_commands::{page::Page, realtime_clock::DateTime, schedule::Schedule};
 #[cfg(feature = "web_interface")]
-use picoserve::routing::{MethodHandler, get_service};
+use picoserve::routing::get_service;
 use picoserve::{
     extract::{Json, State},
-    routing::{get, post, put_service},
+    routing::{MethodHandler, get, post, put_service},
 };
 use serde::Serialize;
 
@@ -41,13 +41,21 @@ pub fn status_router() -> impl MethodHandler<AppState> {
     })
 }
 
-/// Creates a router for static content
+/// Creates a router for one gzipped file of the web UI
 ///
 /// # Returns
-/// * A router that serves static content
+/// * A router that serves the file with `Content-Encoding: gzip`
 #[cfg(feature = "web_interface")]
-pub fn static_router() -> impl MethodHandler<AppState> {
-    get_service(picoserve::response::File::html(include_str!("index.html")))
+pub fn webui_router(
+    content_type: &'static str,
+    body: &'static [u8],
+) -> impl MethodHandler<AppState> {
+    const GZIP: &[(&str, &str)] = &[("Content-Encoding", "gzip")];
+    get_service(picoserve::response::File::with_content_type_and_headers(
+        content_type,
+        body,
+        GZIP,
+    ))
 }
 /// Creates a router for clock-related endpoints
 ///

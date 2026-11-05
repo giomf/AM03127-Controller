@@ -122,16 +122,19 @@ async fn main(spawner: Spawner) {
     spawner.spawn(timing_task(network_stack, panel).unwrap());
 
     for id in 0..WEB_TASK_POOL_SIZE {
-        spawner.spawn(web_task(
-            id,
-            network_stack,
-            server_app,
-            server_config,
-            AppState {
-                panel: panel,
-                storage: shared_storage,
-            },
-        ).unwrap());
+        spawner.spawn(
+            web_task(
+                id,
+                network_stack,
+                server_app,
+                server_config,
+                AppState {
+                    panel: panel,
+                    storage: shared_storage,
+                },
+            )
+            .unwrap(),
+        );
     }
 }
 
