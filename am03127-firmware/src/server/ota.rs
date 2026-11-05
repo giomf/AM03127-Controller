@@ -116,8 +116,15 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
 
         let mut body_reader = request.body_connection.body().reader();
 
+        // Compare the media type only, so parameters like "; charset=..." are accepted.
         let content_type = request.parts.headers().get("Content-Type");
-        if content_type.is_none_or(|ct| ct != "application/octet-stream") {
+        let is_octet_stream = content_type.is_some_and(|ct| {
+            ct.as_raw().split(|&b| b == b';').next().is_some_and(|t| {
+                t.trim_ascii()
+                    .eq_ignore_ascii_case(b"application/octet-stream")
+            })
+        });
+        if !is_octet_stream {
             let connection = request.body_connection.finalize().await?;
             return response_writer
                 .write_response(
@@ -129,15 +136,15 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
 
         let content_length = body_reader.content_length();
         if content_length == 0 {
+            // A chunked upload also ends up here: the image size must be known up front.
+            let message = if request.parts.headers().get("Transfer-Encoding").is_some() {
+                "Chunked upload not supported, send a Content-Length"
+            } else {
+                "Firmware image is empty"
+            };
             let connection = request.body_connection.finalize().await?;
             return response_writer
-                .write_response(
-                    connection,
-                    Response::new(
-                        StatusCode::BAD_REQUEST,
-                        "Content length does not match body size",
-                    ),
-                )
+                .write_response(connection, Response::new(StatusCode::BAD_REQUEST, message))
                 .await;
         }
 
