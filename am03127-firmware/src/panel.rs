@@ -111,9 +111,12 @@ impl Panel {
             .map(|page_wrapper| page_wrapper.0)
             .collect();
 
+        // Keep restoring the rest when the panel rejects one.
         for page in pages {
             let command = page.command(DEFAULT_PANEL_ID);
-            self.uart.lock().await.write(&command).await?;
+            if let Err(err) = self.uart.lock().await.write(&command).await {
+                log::error!("{LOGGER_NAME}: Restoring page \"{}\" failed: {err}", page.id);
+            }
         }
 
         Ok(())
@@ -135,9 +138,12 @@ impl Panel {
             .map(|schedule_wrapper| schedule_wrapper.0)
             .collect();
 
+        // Keep restoring the rest when the panel rejects one.
         for schedule in schedules {
             let command = schedule.command(DEFAULT_PANEL_ID);
-            self.uart.lock().await.write(&command).await?;
+            if let Err(err) = self.uart.lock().await.write(&command).await {
+                log::error!("{LOGGER_NAME}: Restoring schedule \"{}\" failed: {err}", schedule.id);
+            }
         }
 
         Ok(())

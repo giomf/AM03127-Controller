@@ -86,7 +86,8 @@ impl<'a> Uart<'a> {
         log::debug!("{LOGGER_NAME}: Interpreting response as: {}", response);
 
         if response.starts_with("NACK") {
-            log::error!("Failed get positive response from uart")
+            log::error!("{LOGGER_NAME}: Panel rejected the command (NACK)");
+            return Err(Error::Uart("Panel rejected the command (NACK)".try_into().unwrap()));
         }
 
         Ok(())
