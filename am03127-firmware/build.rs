@@ -1,9 +1,65 @@
 fn main() {
+    emit_storage_layout();
     emit_build_time();
     emit_build_version();
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+/// Splits the `nvs` partition of partition-table.csv into page and schedule storage,
+/// so the flash addresses follow the partition table instead of being hard-coded.
+fn emit_storage_layout() {
+    const TABLE: &str = "partition-table.csv";
+    const SECTOR: u32 = 0x1000;
+    println!("cargo:rerun-if-changed={TABLE}");
+
+    let table = std::fs::read_to_string(TABLE).unwrap_or_else(|e| panic!("reading {TABLE}: {e}"));
+    let fields: Vec<&str> = table
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| line.split(',').map(str::trim).collect::<Vec<_>>())
+        .find(|fields| fields.first() == Some(&"nvs"))
+        .unwrap_or_else(|| panic!("{TABLE} has no `nvs` partition"));
+    let offset = parse_size(fields[3]);
+    let half = parse_size(fields[4]) / 2;
+
+    // sequential-storage works on whole flash sectors and needs at least two per region.
+    assert!(
+        offset % SECTOR == 0 && half % SECTOR == 0 && half >= 2 * SECTOR,
+        "{TABLE}: `nvs` must be sector aligned and hold two regions of at least two sectors"
+    );
+
+    let out = std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("storage_layout.rs");
+    std::fs::write(
+        out,
+        format!(
+            "pub const PAGE_STORAGE_BEGIN: u32 = {offset:#x};\n\
+             pub const PAGE_STORAGE_SIZE: u32 = {half:#x};\n\
+             pub const SCHEDULE_STORAGE_BEGIN: u32 = {:#x};\n\
+             pub const SCHEDULE_STORAGE_SIZE: u32 = {half:#x};\n",
+            offset + half
+        ),
+    )
+    .unwrap();
+}
+
+/// Parses a partition table number: "0x9000", "36864", "24K" or "1M".
+fn parse_size(value: &str) -> u32 {
+    let (digits, scale) = match value.as_bytes().last() {
+        Some(b'K' | b'k') => (&value[..value.len() - 1], 1024),
+        Some(b'M' | b'm') => (&value[..value.len() - 1], 1024 * 1024),
+        _ => (value, 1),
+    };
+    let number = match digits
+        .strip_prefix("0x")
+        .or_else(|| digits.strip_prefix("0X"))
+    {
+        Some(hex) => u32::from_str_radix(hex, 16),
+        None => digits.parse(),
+    };
+    number.unwrap_or_else(|_| panic!("invalid number `{value}` in partition table")) * scale
 }
 
 fn emit_build_version() {
