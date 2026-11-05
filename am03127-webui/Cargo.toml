@@ -7,6 +7,7 @@ edition = "2024"
 am03127-client = { path = "../am03127-client" }
 am03127-commands = { path = "../am03127-commands" }
 anyhow = "1"
+gloo-net = { version = "0.7", default-features = false, features = ["http", "json"], optional = true }
 js-sys = "0.3"
 leptos = { version = "0.8", features = ["csr"] }
 serde = "1"
@@ -14,3 +15,7 @@ serde_json = "1"
 time = { version = "0.3", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["File", "FileList"] }
+
+[features]
+# Multi-panel UI for am03127-server instead of the UI served by a single panel.
+server = ["dep:gloo-net"]

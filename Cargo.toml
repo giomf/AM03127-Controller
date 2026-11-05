@@ -5,6 +5,7 @@ members = [
     "am03127-client",
     "am03127-cli",
     "am03127-webui",
+    "am03127-server",
 ]
 
 # Size-optimized profile for the web UI, which is embedded in the firmware flash.

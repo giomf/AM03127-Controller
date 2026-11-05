@@ -1,0 +1,14 @@
+[package]
+name = "am03127-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+am03127-client = { path = "../am03127-client" }
+anyhow = "1"
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
+tower-http = { version = "0.7", features = ["fs"] }

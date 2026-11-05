@@ -1,0 +1,13 @@
+# Panels for `just webui-server`: two mocks (mock.py) and one that is offline.
+[[panels]]
+name = "Kitchen"
+address = "127.0.0.1:3001"
+
+[[panels]]
+name = "Office"
+address = "127.0.0.1:3002"
+
+[[panels]]
+name = "Offline"
+address = "127.0.0.1:3999"
+hidden = true

@@ -1,5 +1,8 @@
 # `trunk serve` forwards the panel API to the mock (mock.py). Point these at a
-# real panel's IP to develop against hardware.
+# real panel's IP to develop against hardware. /api goes to am03127-server
+# (`just webui-server`); without it the UI runs in single-panel mode.
+[[proxy]]
+backend = "http://127.0.0.1:8090/api"
 [[proxy]]
 backend = "http://127.0.0.1:3000/status"
 [[proxy]]

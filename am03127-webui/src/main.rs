@@ -13,16 +13,52 @@ const PAGE_IDS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const SCHEDULE_IDS: &str = "ABCDE";
 const TABS: [&str; 2] = ["Content", "Device"];
 
-/// Shared UI state: the notice bar and a counter that lists re-fetch on.
+/// Shared UI state: the notice bar, a counter that lists re-fetch on and, behind
+/// am03127-server, the selected panel.
 #[derive(Clone, Copy)]
 struct Ctx {
     notice: RwSignal<Option<Result<String, String>>>,
     refresh: RwSignal<u32>,
+    panel: RwSignal<Option<String>>,
 }
 
-/// The UI is served by the panel itself, so the API lives on the same host.
+/// A panel as listed by am03127-server's `/api/panels`.
+#[cfg(feature = "server")]
+#[derive(Clone, serde::Deserialize)]
+struct PanelInfo {
+    name: String,
+    hidden: bool,
+}
+
+/// `None` is the panel serving this page; `Some(name)` a panel behind am03127-server.
+fn client_for(panel: Option<&str>) -> PanelClient {
+    let location = window().location();
+    match panel {
+        None => PanelClient::new(&location.host().unwrap()),
+        Some(name) => PanelClient::with_base_url(format!(
+            "{}/api/panel/{}",
+            location.origin().unwrap(),
+            js_sys::encode_uri_component(name)
+        )),
+    }
+}
+
+/// Client for the selected panel.
 fn client() -> PanelClient {
-    PanelClient::new(&window().location().host().unwrap())
+    client_for(expect_context::<Ctx>().panel.get_untracked().as_deref())
+}
+
+/// The panels configured in am03127-server.
+#[cfg(feature = "server")]
+async fn fetch_panels() -> Result<Vec<PanelInfo>, String> {
+    let response = gloo_net::http::Request::get("/api/panels")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !response.ok() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+    response.json().await.map_err(|e| e.to_string())
 }
 
 /// Runs an API call in the background, then shows `done` (or the error) and refreshes the lists.
@@ -202,13 +238,17 @@ fn PageRow(page: Option<Page>, #[prop(optional)] free: Vec<String>) -> impl Into
             WaitingTime::new(wait.get()),
         );
         let done = if is_new { "Page added" } else { "Page saved" };
-        run(done, async move { client().set_page(&page).await });
+        let client = client();
+        run(done, async move { client.set_page(&page).await });
     };
     let cancel = move |_| {
         original.with_value(load);
         editing.set(false);
     };
-    let delete = move |_| run("Page deleted", async move { client().delete_page(page_id).await });
+    let delete = move |_| {
+        let client = client();
+        run("Page deleted", async move { client.delete_page(page_id).await })
+    };
 
     move || {
         if !editing.get() {
@@ -271,7 +311,8 @@ fn Pages() -> impl IntoView {
     let ctx = expect_context::<Ctx>();
     let pages = LocalResource::new(move || {
         ctx.refresh.track();
-        async { client().get_pages().await.map_err(|e| e.to_string()) }
+        let client = client();
+        async move { client.get_pages().await.map_err(|e| e.to_string()) }
     });
 
     view! {
@@ -344,13 +385,17 @@ fn ScheduleRow(schedule: Option<Schedule>, #[prop(optional)] free: Vec<String>) 
         }
         let schedule = Schedule::new(id.get().chars().next().unwrap_or('A'), start, end, page_ids);
         let done = if is_new { "Schedule added" } else { "Schedule saved" };
-        run(done, async move { client().set_schedule(&schedule).await });
+        let client = client();
+        run(done, async move { client.set_schedule(&schedule).await });
     };
     let cancel = move |_| {
         original.with_value(load);
         editing.set(false);
     };
-    let delete = move |_| run("Schedule deleted", async move { client().delete_schedule(schedule_id).await });
+    let delete = move |_| {
+        let client = client();
+        run("Schedule deleted", async move { client.delete_schedule(schedule_id).await })
+    };
 
     move || {
         if !editing.get() {
@@ -401,7 +446,8 @@ fn Schedules() -> impl IntoView {
     let ctx = expect_context::<Ctx>();
     let schedules = LocalResource::new(move || {
         ctx.refresh.track();
-        async { client().get_schedules().await.map_err(|e| e.to_string()) }
+        let client = client();
+        async move { client.get_schedules().await.map_err(|e| e.to_string()) }
     });
 
     view! {
@@ -440,8 +486,9 @@ fn Device() -> impl IntoView {
     let file_name = RwSignal::new(None::<String>);
 
     let sync_clock = move |_| {
+        let client = client();
         run("Clock set to this browser's time", async move {
-            client().set_clock(&browser_now()?).await
+            client.set_clock(&browser_now()?).await
         })
     };
 
@@ -450,17 +497,19 @@ fn Device() -> impl IntoView {
             expect_context::<Ctx>().notice.set(Some(Err("Choose a firmware file first".into())));
             return;
         };
+        let client = client();
         run("Firmware uploaded, the panel is restarting", async move {
             let buffer = JsFuture::from(selected.array_buffer())
                 .await
                 .map_err(|e| anyhow!("could not read file: {e:?}"))?;
-            client().update_firmware(&js_sys::Uint8Array::new(&buffer).to_vec()).await
+            client.update_firmware(&js_sys::Uint8Array::new(&buffer).to_vec()).await
         });
     };
 
     let reset = move |_| {
         if window().confirm_with_message("Delete all pages and schedules?").unwrap_or(false) {
-            run("All pages and schedules deleted", async move { client().reset().await });
+            let client = client();
+            run("All pages and schedules deleted", async move { client.reset().await });
         }
     };
 
@@ -495,34 +544,56 @@ fn Device() -> impl IntoView {
     }
 }
 
+/// Panel picker behind am03127-server: click a panel to edit it.
+#[cfg(feature = "server")]
 #[component]
-fn App() -> impl IntoView {
-    let ctx = Ctx {
-        notice: RwSignal::new(None),
-        refresh: RwSignal::new(0),
+fn PanelBar(panels: Vec<PanelInfo>) -> impl IntoView {
+    let ctx = expect_context::<Ctx>();
+    let select = move |name: String| {
+        ctx.panel.set(Some(name));
+        ctx.refresh.update(|n| *n += 1);
     };
-    provide_context(ctx);
-    let tab = RwSignal::new(TABS[0]);
-
-    let status = LocalResource::new(|| async { client().get_status().await.map_err(|e| e.to_string()) });
 
     view! {
-        <header>
-            <h1>"AM03127-Controller"</h1>
-            <Suspense fallback=|| "">
-                {move || status.get().map(|s| match s {
-                    Ok(info) => format!("Firmware {} ({} {})", info.version, info.build_date, info.build_time),
-                    Err(err) => format!("Panel unreachable: {err}"),
-                })}
-            </Suspense>
-        </header>
-        {move || ctx.notice.get().map(|notice| {
-            let (class, text) = match notice {
-                Ok(text) => ("toast", text),
-                Err(text) => ("toast error", format!("{text} (click to dismiss)")),
-            };
-            view! { <div class=class role="status" on:click=move |_| ctx.notice.set(None)>{text}</div> }
-        })}
+        <div class="panels">
+            {panels.into_iter().map(|panel| {
+                let name = panel.name.clone();
+                let status = LocalResource::new({
+                    let name = name.clone();
+                    move || {
+                        let client = client_for(Some(&name));
+                        async move { client.get_status().await.map_err(|e| e.to_string()) }
+                    }
+                });
+                let (is_current, click) = (name.clone(), name.clone());
+                view! {
+                    <div
+                        class="panel"
+                        class:active=move || ctx.panel.get().as_deref() == Some(is_current.as_str())
+                        on:click=move |_| select(click.clone())
+                    >
+                        <strong>{panel.name}{panel.hidden.then_some(" (hidden)")}</strong>
+                        <small>
+                            {move || match status.get() {
+                                None => view! { "…" }.into_any(),
+                                Some(Ok(info)) => view! {
+                                    <span class="dot online">"●"</span>" "{info.version}
+                                }.into_any(),
+                                Some(Err(_)) => view! { <span class="dot offline">"●"</span>" offline" }.into_any(),
+                            }}
+                        </small>
+                    </div>
+                }
+            }).collect_view()}
+        </div>
+    }
+}
+
+/// Tabs and their content for the selected panel.
+#[component]
+fn Body() -> impl IntoView {
+    let tab = RwSignal::new(TABS[0]);
+    view! {
         <nav>
             {TABS.iter().map(|&label| view! {
                 <button class:active=move || tab.get() == label on:click=move |_| tab.set(label)>
@@ -536,6 +607,72 @@ fn App() -> impl IntoView {
                 _ => view! { <Pages /> <Schedules /> }.into_any(),
             }}
         </main>
+    }
+}
+
+/// Built with the `server` feature for am03127-server: loads the panel list and selects the
+/// first visible panel before anything talks to a panel.
+#[cfg(feature = "server")]
+fn body() -> impl IntoView {
+    let ctx = expect_context::<Ctx>();
+    let panels = LocalResource::new(move || async move {
+        let panels = fetch_panels().await?;
+        let first = panels.iter().find(|p| !p.hidden).or(panels.first());
+        let first = first.ok_or("panel-config.toml has no panels")?;
+        ctx.panel.set(Some(first.name.clone()));
+        Ok::<_, String>(panels)
+    });
+    view! {
+        <Suspense fallback=|| view! { <p>"Loading…"</p> }>
+            {move || panels.get().map(|result| match result {
+                Ok(list) => view! { <PanelBar panels=list /> <Body /> }.into_any(),
+                Err(err) => view! { <p class="error">"Could not load the panels: "{err}</p> }.into_any(),
+            })}
+        </Suspense>
+    }
+}
+
+/// Built without the `server` feature, the UI is served by the panel it controls.
+#[cfg(not(feature = "server"))]
+fn body() -> impl IntoView {
+    let status = LocalResource::new(|| {
+        let client = client();
+        async move { client.get_status().await.map_err(|e| e.to_string()) }
+    });
+    view! {
+        <p class="status">
+            <Suspense fallback=|| "">
+                {move || status.get().map(|s| match s {
+                    Ok(info) => format!("Firmware {} ({} {})", info.version, info.build_date, info.build_time),
+                    Err(err) => format!("Panel unreachable: {err}"),
+                })}
+            </Suspense>
+        </p>
+        <Body />
+    }
+}
+
+#[component]
+fn App() -> impl IntoView {
+    let ctx = Ctx {
+        notice: RwSignal::new(None),
+        refresh: RwSignal::new(0),
+        panel: RwSignal::new(None),
+    };
+    provide_context(ctx);
+
+    view! {
+        <header>
+            <h1>"AM03127-Controller"</h1>
+        </header>
+        {move || ctx.notice.get().map(|notice| {
+            let (class, text) = match notice {
+                Ok(text) => ("toast", text),
+                Err(text) => ("toast error", format!("{text} (click to dismiss)")),
+            };
+            view! { <div class=class role="status" on:click=move |_| ctx.notice.set(None)>{text}</div> }
+        })}
+        {body()}
     }
 }
 

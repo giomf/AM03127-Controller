@@ -24,9 +24,15 @@ pub struct PanelClient {
 
 impl PanelClient {
     pub fn new(address: &str) -> Self {
+        Self::with_base_url(format!("http://{address}"))
+    }
+
+    /// Client for an API under another base URL, e.g. a panel behind am03127-server
+    /// (`https://host/api/panel/Kitchen`).
+    pub fn with_base_url(base_url: String) -> Self {
         Self {
             http: transport::Http::new(),
-            base_url: format!("http://{address}"),
+            base_url,
         }
     }
 

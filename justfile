@@ -21,3 +21,13 @@ webui:
     #!/usr/bin/env bash
     python3 am03127-webui/mock.py & trap "kill $!" EXIT
     cd am03127-webui && trunk serve --port 8080
+
+# Serve the web UI in multi-panel mode: am03127-server with two mock panels.
+webui-server:
+    #!/usr/bin/env bash
+    cargo build -p am03127-server || exit 1
+    python3 am03127-webui/mock.py 3001 & m1=$!
+    python3 am03127-webui/mock.py 3002 & m2=$!
+    target/debug/am03127-server --config am03127-webui/dev-panels.toml --listen 127.0.0.1:8090 & server=$!
+    trap "kill $m1 $m2 $server" EXIT
+    cd am03127-webui && trunk serve --port 8080 --features server
