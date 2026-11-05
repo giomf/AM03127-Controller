@@ -70,6 +70,13 @@ impl<'a> Uart<'a> {
     pub async fn write(&mut self, data: &str) -> Result<(), Error> {
         log::debug!("{LOGGER_NAME}: Sending {data}");
 
+        // Drop stale bytes, e.g. a late answer to an earlier timed-out command,
+        // so they are not taken as the answer to this one.
+        let mut stale = [0u8; READ_BUFFER_SIZE];
+        while self.uart.read_buffered(&mut stale).unwrap_or(0) > 0 {
+            log::warn!("{LOGGER_NAME}: Discarding stale bytes from panel");
+        }
+
         let timeout = Duration::from_secs(UART_TIMEOUT_SECS);
         with_timeout(timeout, self.uart.write_all(data.as_bytes()))
             .await
