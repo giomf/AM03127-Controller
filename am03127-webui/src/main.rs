@@ -265,7 +265,7 @@ fn PageRow(page: Option<Page>, #[prop(optional)] free: Vec<String>) -> impl Into
                     <td>{seconds(wait.get())}</td>
                     <td class="actions">
                         <button on:click=move |_| editing.set(true)>"Edit"</button>
-                        <button on:click=delete>"Delete"</button>
+                        <button class="danger" on:click=delete>"Delete"</button>
                     </td>
                 </tr>
             }
@@ -409,7 +409,7 @@ fn ScheduleRow(schedule: Option<Schedule>, #[prop(optional)] free: Vec<String>) 
                     <td>{pages.get()}</td>
                     <td class="actions">
                         <button on:click=move |_| editing.set(true)>"Edit"</button>
-                        <button on:click=delete>"Delete"</button>
+                        <button class="danger" on:click=delete>"Delete"</button>
                     </td>
                 </tr>
             }
