@@ -170,8 +170,8 @@ pub fn pages_router() -> impl MethodHandler<AppState> {
 pub fn schedule_router() -> impl MethodHandler<AppState, (char,)> {
     get(
             |schedule_id: char, State(panel): State<&'static Panel>| async move {
-                log::info!("{LOGGER_NAME}: Getting page \"{schedule_id}\"");
-                if !is_page_id_valid(schedule_id) {
+                log::info!("{LOGGER_NAME}: Getting schedule \"{schedule_id}\"");
+                if !is_schedule_id_valid(schedule_id) {
                     return Err(Error::BadRequest(
                         "Schedule ID not valid".try_into().unwrap(),
                     ));
