@@ -250,8 +250,13 @@ pub fn schedules_router() -> impl MethodHandler<AppState> {
     .post(
         |State(panel): State<&'static Panel>, Json::<Vec<Schedule>>(schedules)| async move {
             // Check all first so a bad entry does not leave a half-applied upload.
-            if schedules.iter().any(|schedule| !is_schedule_id_valid(schedule.id)) {
-                return Err(Error::BadRequest("Schedule ID not valid".try_into().unwrap()));
+            if schedules
+                .iter()
+                .any(|schedule| !is_schedule_id_valid(schedule.id))
+            {
+                return Err(Error::BadRequest(
+                    "Schedule ID not valid".try_into().unwrap(),
+                ));
             }
             for schedule in schedules {
                 if let Err(err) = panel.set_schedule(schedule).await {

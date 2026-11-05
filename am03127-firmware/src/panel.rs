@@ -115,7 +115,10 @@ impl Panel {
         for page in pages {
             let command = page.command(DEFAULT_PANEL_ID);
             if let Err(err) = self.uart.lock().await.write(&command).await {
-                log::error!("{LOGGER_NAME}: Restoring page \"{}\" failed: {err}", page.id);
+                log::error!(
+                    "{LOGGER_NAME}: Restoring page \"{}\" failed: {err}",
+                    page.id
+                );
             }
         }
 
@@ -142,7 +145,10 @@ impl Panel {
         for schedule in schedules {
             let command = schedule.command(DEFAULT_PANEL_ID);
             if let Err(err) = self.uart.lock().await.write(&command).await {
-                log::error!("{LOGGER_NAME}: Restoring schedule \"{}\" failed: {err}", schedule.id);
+                log::error!(
+                    "{LOGGER_NAME}: Restoring schedule \"{}\" failed: {err}",
+                    schedule.id
+                );
             }
         }
 
@@ -259,7 +265,9 @@ impl Panel {
         let schedule_id = schedule.id;
         log::info!("{LOGGER_NAME}: Setting schedule \"{schedule_id}\"");
         if !is_schedule_id_valid(schedule_id) {
-            return Err(Error::BadRequest("Schedule ID not valid".try_into().unwrap()));
+            return Err(Error::BadRequest(
+                "Schedule ID not valid".try_into().unwrap(),
+            ));
         }
         log::debug!("{LOGGER_NAME}: {:?}", schedule);
 

@@ -28,11 +28,7 @@ fn emit_build_version() {
         .map(|o| !o.stdout.is_empty())
         .unwrap_or(false);
 
-    let version = if dirty {
-        format!("{hash}-dirty")
-    } else {
-        hash
-    };
+    let version = if dirty { format!("{hash}-dirty") } else { hash };
 
     println!("cargo:rustc-env=BUILD_VERSION={version}");
 }

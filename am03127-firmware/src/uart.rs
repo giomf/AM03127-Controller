@@ -98,7 +98,9 @@ impl<'a> Uart<'a> {
 
         if response.starts_with(b"NACK") {
             log::error!("{LOGGER_NAME}: Panel rejected the command (NACK)");
-            return Err(Error::Uart("Panel rejected the command (NACK)".try_into().unwrap()));
+            return Err(Error::Uart(
+                "Panel rejected the command (NACK)".try_into().unwrap(),
+            ));
         }
 
         Ok(())
