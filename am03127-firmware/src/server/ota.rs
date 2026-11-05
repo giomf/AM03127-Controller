@@ -179,7 +179,10 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
                 "{LOGGER_NAME}: Flashing image to {:?}",
                 target_partition_type
             );
-            flash_firmware(&mut body_reader, &mut target_partition, content_length).await?;
+            let mut target_flash = target_partition
+                .as_nor_flash()
+                .map_err(|_| "OTA partition is not writable")?;
+            flash_firmware(&mut body_reader, &mut target_flash, content_length).await?;
 
             log::info!(
                 "{LOGGER_NAME}: Select {:?} as next bootable partition",

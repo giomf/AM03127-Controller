@@ -18,13 +18,10 @@ use embassy_time::{Duration, Timer, with_timeout};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::{esp_app_desc, ota_updater::OtaUpdater};
-use esp_hal::{
-    clock::CpuClock, interrupt::software::SoftwareInterruptControl, peripherals::WIFI, ram,
-    rng::Rng, timer::timg::TimerGroup,
-};
-use esp_radio::{
-    Controller, init,
-    wifi::{ClientConfig, ModeConfig, WifiController, WifiDevice, WifiEvent, WifiStaState},
+use esp_hal::{clock::CpuClock, peripherals::WIFI, ram, rng::Rng, timer::timg::TimerGroup};
+use esp_radio::wifi::{
+    AuthenticationMethodConfig, Config as WifiConfig, ControllerConfig, Interface, WifiController,
+    sta::StationConfig,
 };
 use esp_storage::FlashStorage;
 use panel::Panel;
@@ -60,7 +57,8 @@ esp_app_desc!(
     "5.2",                 // ESP-IDF version
     64 * 1024,             // MMU page size
     0,                     // min eFuse block revision
-    u16::MAX               // max eFuse block revision
+    u16::MAX,              // max eFuse block revision
+    esp_bootloader_esp_idf::SECURE_VERSION
 );
 
 #[esp_rtos::main]
@@ -111,26 +109,20 @@ async fn main(spawner: Spawner) {
     log::info!("\tSelected partition:\t{:?}", selected_partition);
     log::info!("==========================================");
 
-    #[cfg(target_arch = "riscv32")]
-    let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-    esp_rtos::start(
-        timg0.timer0,
-        #[cfg(target_arch = "riscv32")]
-        sw_int.software_interrupt0,
-    );
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
     let (wifi_controller, wifi_interface) = init_wifi(peripherals.WIFI);
     let (network_stack, network_runner) = init_network(wifi_interface);
     let (server_app, server_config) = init_server();
 
-    spawner.must_spawn(wifi_task(wifi_controller, network_stack));
-    spawner.must_spawn(network_task(network_runner));
-    spawner.must_spawn(panel_init_task(panel));
+    spawner.spawn(wifi_task(wifi_controller, network_stack).unwrap());
+    spawner.spawn(network_task(network_runner).unwrap());
+    spawner.spawn(panel_init_task(panel).unwrap());
     #[cfg(feature = "sntp")]
-    spawner.must_spawn(timing_task(network_stack, panel));
+    spawner.spawn(timing_task(network_stack, panel).unwrap());
 
     for id in 0..WEB_TASK_POOL_SIZE {
-        spawner.must_spawn(web_task(
+        spawner.spawn(web_task(
             id,
             network_stack,
             server_app,
@@ -139,22 +131,23 @@ async fn main(spawner: Spawner) {
                 panel: panel,
                 storage: shared_storage,
             },
-        ));
+        ).unwrap());
     }
 }
 
-fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, WifiDevice<'static>) {
-    let esp_radio_ctrl = &*make_static!(Controller<'static>, init().unwrap());
-    let (controller, interfaces) =
-        esp_radio::wifi::new(&esp_radio_ctrl, wifi, Default::default()).unwrap();
-    let device = interfaces.sta;
+fn init_wifi(wifi: WIFI<'static>) -> (WifiController<'static>, Interface) {
+    let station = StationConfig::default()
+        .with_ssid(SSID.try_into().unwrap())
+        .with_authentication(AuthenticationMethodConfig::Wpa2Personal(
+            PASSWORD.try_into().unwrap(),
+        ));
+    let config = ControllerConfig::default().with_initial_config(WifiConfig::Station(station));
+    let controller = WifiController::new(wifi, config).unwrap();
 
-    return (controller, device);
+    (controller, Interface::station())
 }
 
-fn init_network(
-    wifi_device: WifiDevice<'static>,
-) -> (NetworkStack<'static>, Runner<'static, WifiDevice<'static>>) {
+fn init_network(wifi_device: Interface) -> (NetworkStack<'static>, Runner<'static, Interface>) {
     let rng = Rng::new();
     let config = embassy_net::Config::dhcpv4(Default::default());
     let seed = (rng.random() as u64) << 32 | rng.random() as u64;
@@ -196,24 +189,11 @@ async fn wifi_task(
     log::info!("{LOGGER_NAME}: Start wifi connection task");
 
     loop {
-        if matches!(esp_radio::wifi::sta_state(), WifiStaState::Connected) {
+        if wifi_controller.is_connected() {
             // wait until we're no longer connected
-            wifi_controller
-                .wait_for_event(WifiEvent::StaDisconnected)
-                .await;
+            let _ = wifi_controller.wait_for_disconnect_async().await;
             log::info!("{LOGGER_NAME}: Wifi disconnected");
             Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await
-        }
-        if !matches!(wifi_controller.is_started(), Ok(true)) {
-            let client_config = ModeConfig::Client(
-                ClientConfig::default()
-                    .with_ssid(SSID.try_into().unwrap())
-                    .with_password(PASSWORD.try_into().unwrap()),
-            );
-            wifi_controller.set_config(&client_config).unwrap();
-            log::info!("{LOGGER_NAME}: Starting wifi");
-            wifi_controller.start_async().await.unwrap();
-            log::info!("{LOGGER_NAME}: Wifi started");
         }
 
         match wifi_controller.connect_async().await {
@@ -253,7 +233,7 @@ async fn wifi_task(
 }
 
 #[embassy_executor::task]
-async fn network_task(mut runner: Runner<'static, WifiDevice<'static>>) -> ! {
+async fn network_task(mut runner: Runner<'static, Interface>) -> ! {
     const LOGGER_NAME: &str = "Network";
     log::info!("{LOGGER_NAME}: Start network task");
     runner.run().await
