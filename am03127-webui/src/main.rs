@@ -555,8 +555,11 @@ fn Device() -> impl IntoView {
 
     view! {
         <section class="cards">
-            <div class="card">
-                <h2>"Status"</h2>
+            <div class="card status">
+                <div class="row">
+                    <h2>"Status"</h2>
+                    <button class="primary" on:click=move |_| status.refetch()>"Refresh"</button>
+                </div>
                 <Suspense fallback=|| view! { <p>"Loading…"</p> }>
                     {move || status.get().map(|result| match result {
                         Ok(s) => view! {
@@ -581,31 +584,38 @@ fn Device() -> impl IntoView {
                         Err(err) => view! { <p class="error">"Unreachable: "{err}</p> }.into_any(),
                     })}
                 </Suspense>
-                <button on:click=move |_| status.refetch()>"Refresh"</button>
             </div>
             <div class="card">
-                <h2>"Clock"</h2>
-                <p>"Set the panel's clock to the current time of this browser."</p>
+                <div>
+                    <h2>"Clock"</h2>
+                    <p>"Set the panel's clock to the current time of this browser."</p>
+                </div>
                 <button class="primary" on:click=sync_clock>"Sync clock"</button>
             </div>
             <div class="card">
-                <h2>"Firmware update"</h2>
-                <p>"Upload a firmware image (.bin). The panel restarts after the upload."</p>
-                <label class="file">
-                    <input
-                        type="file" accept=".bin" node_ref=file
-                        on:change=move |_| file_name.set(
-                            file.get().and_then(|i| i.files()).and_then(|f| f.get(0))
-                                .map(|f| format!("{} ({} KB)", f.name(), (f.size() / 1024.0).round()))
-                        )
-                    />
-                    {move || file_name.get().unwrap_or_else(|| "Choose file…".into())}
-                </label>
-                <button class="primary" disabled=move || file_name.get().is_none() on:click=upload>"Upload"</button>
+                <div>
+                    <h2>"Firmware update"</h2>
+                    <p>"Upload a firmware image (.bin). The panel restarts after the upload."</p>
+                </div>
+                <div class="row">
+                    <label class="file">
+                        <input
+                            type="file" accept=".bin" node_ref=file
+                            on:change=move |_| file_name.set(
+                                file.get().and_then(|i| i.files()).and_then(|f| f.get(0))
+                                    .map(|f| format!("{} ({} KB)", f.name(), (f.size() / 1024.0).round()))
+                            )
+                        />
+                        {move || file_name.get().unwrap_or_else(|| "Choose file…".into())}
+                    </label>
+                    <button class="primary" disabled=move || file_name.get().is_none() on:click=upload>"Upload"</button>
+                </div>
             </div>
             <div class="card danger-zone">
-                <h2>"Danger zone"</h2>
-                <p>"Delete all pages and schedules from the panel. This cannot be undone."</p>
+                <div>
+                    <h2>"Danger zone"</h2>
+                    <p>"Delete all pages and schedules from the panel. This cannot be undone."</p>
+                </div>
                 <button class="danger" on:click=reset>"Delete everything"</button>
             </div>
         </section>
