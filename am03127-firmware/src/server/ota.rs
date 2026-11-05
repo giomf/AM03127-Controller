@@ -10,6 +10,8 @@ use crate::server::AppState;
 const LOGGER_NAME: &str = "OTA";
 const OTA_BUFFER_SIZE: usize = 4096;
 const ALIGNMENT: usize = 4;
+/// Time for the TCP stack to deliver the response before the reset cuts the connection.
+const REBOOT_DELAY_MS: u64 = 1000;
 
 /// Streams the firmware body into the target flash partition in 4-byte aligned chunks.
 async fn flash_firmware<BR: Read, F: NorFlash>(
@@ -196,6 +198,7 @@ impl picoserve::routing::RequestHandlerService<AppState, ()> for OverTheAirUpdat
         let sent = response_writer.write_response(connection, response).await?;
 
         if ota_result.is_ok() {
+            embassy_time::Timer::after_millis(REBOOT_DELAY_MS).await;
             log::info!("{LOGGER_NAME}: Rebooting into new firmware");
             esp_hal::system::software_reset()
         }
