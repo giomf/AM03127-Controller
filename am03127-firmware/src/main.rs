@@ -14,7 +14,7 @@ mod uart;
 use embassy_executor::Spawner;
 use embassy_net::{Runner, Stack as NetworkStack, StackResources};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer, with_timeout};
 use esp_alloc as _;
 use esp_backtrace as _;
 use esp_bootloader_esp_idf::{esp_app_desc, ota_updater::OtaUpdater};
@@ -46,6 +46,8 @@ const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
 const PANEL_INIT_DELAY_SECS: u64 = 10;
 const WIFI_DELAY_SECS: u64 = 5;
+/// Max wait for link and DHCP after connecting; a drop in that window would otherwise hang the task.
+const WIFI_CONFIG_TIMEOUT_SECS: u64 = 30;
 
 pub type SharedUart = &'static Mutex<CriticalSectionRawMutex, Uart<'static>>;
 pub type SharedStorage = &'static Mutex<CriticalSectionRawMutex, FlashStorage<'static>>;
@@ -217,9 +219,20 @@ async fn wifi_task(
         match wifi_controller.connect_async().await {
             Ok(_) => {
                 log::info!("{LOGGER_NAME}: Wifi connected to {SSID}");
-                network_stack.wait_link_up().await;
-                log::info!("{LOGGER_NAME}: Getting DHCP IP address");
-                network_stack.wait_config_up().await;
+                let config_up = async {
+                    network_stack.wait_link_up().await;
+                    log::info!("{LOGGER_NAME}: Getting DHCP IP address");
+                    network_stack.wait_config_up().await;
+                };
+                let timeout = Duration::from_secs(WIFI_CONFIG_TIMEOUT_SECS);
+                if with_timeout(timeout, config_up).await.is_err() {
+                    log::error!(
+                        "{LOGGER_NAME}: No DHCP IP address after {WIFI_CONFIG_TIMEOUT_SECS} s, reconnecting"
+                    );
+                    let _ = wifi_controller.disconnect_async().await;
+                    Timer::after(Duration::from_secs(WIFI_DELAY_SECS)).await;
+                    continue;
+                }
 
                 match network_stack.config_v4() {
                     Some(config) => {
