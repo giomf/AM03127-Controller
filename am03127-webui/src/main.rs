@@ -4,6 +4,7 @@ use am03127_commands::{
     realtime_clock::DateTime,
     schedule::{Schedule, ScheduleDateTime},
 };
+use am03127_client::config::Model;
 use anyhow::{Result, anyhow};
 use leptos::{html, prelude::*, task::spawn_local};
 use serde::{Serialize, de::DeserializeOwned};
@@ -20,6 +21,8 @@ struct Ctx {
     notice: RwSignal<Option<Result<String, String>>>,
     refresh: RwSignal<u32>,
     panel: RwSignal<Option<String>>,
+    /// Model of the selected panel; `None` is the standard panel.
+    model: RwSignal<Option<Model>>,
 }
 
 /// A panel as listed by am03127-server's `/api/panels`.
@@ -29,7 +32,7 @@ struct PanelInfo {
     name: String,
     hidden: bool,
     floor: Option<String>,
-    model: Option<am03127_client::config::Model>,
+    model: Option<Model>,
 }
 
 /// `None` is the panel serving this page; `Some(name)` a panel behind am03127-server.
@@ -193,6 +196,45 @@ fn seconds(wait: u8) -> String {
 
 /// One table row. Existing pages show as text until "Edit"; the trailing new row
 /// (`page: None`) is always in edit mode and offers only the free IDs.
+/// Pixel width of `message` on the panel. The fonts are monospace; inline font tags change
+/// the width per character, clock tags expand to their rendered length, `<Nxx>` jumps to column xx.
+fn text_width(message: &str) -> usize {
+    let (mut px, mut per_char, mut rest) = (0, 6, message);
+    while let Some(c) = rest.chars().next() {
+        let column = rest.strip_prefix("<N").filter(|r| r.get(2..3) == Some(">"));
+        if let Some(col) = column.and_then(|r| usize::from_str_radix(r.get(..2)?, 16).ok()) {
+            px = col;
+            rest = &rest[5..];
+            continue;
+        }
+        let tag = rest.get(..4).filter(|t| t.starts_with('<') && t.ends_with('>'));
+        if let Some(tag) = tag {
+            match &tag[1..3] {
+                "AA" | "AE" => per_char = 6,
+                "AB" => per_char = 7,
+                "AC" => per_char = 5,
+                "AD" => per_char = 8,
+                "KT" => px += 5 * per_char,
+                "KD" => px += 8 * per_char,
+                _ => {}
+            }
+            rest = &rest[4..];
+            continue;
+        }
+        px += per_char;
+        rest = &rest[c.len_utf8()..];
+    }
+    px
+}
+
+/// Visible width in pixels, measured with 'M's: 20 fit on the long panel, 13 on the standard one.
+fn panel_width(model: Option<Model>) -> usize {
+    match model {
+        Some(Model::Long) => 120,
+        _ => 80,
+    }
+}
+
 #[component]
 fn PageRow(page: Option<Page>, #[prop(optional)] free: Vec<String>) -> impl IntoView {
     let is_new = page.is_none();
@@ -279,7 +321,15 @@ fn PageRow(page: Option<Page>, #[prop(optional)] free: Vec<String>) -> impl Into
         view! {
             <tr class="editing">
                 <td>{id_cell}</td>
-                <td><input type="text" placeholder="Message" bind:value=message /></td>
+                <td>
+                    <input type="text" placeholder="Message" bind:value=message />
+                    {move || {
+                        let max = panel_width(expect_context::<Ctx>().model.get());
+                        (text_width(&message.get()) > max).then(|| view! {
+                            <small class="error">"Too wide for the panel ("{max}" px), cut off unless it scrolls"</small>
+                        })
+                    }}
+                </td>
                 <td><Select options=choices(names(Leading::ALL)) value=leading /></td>
                 <td><Select options=choices(names(Lagging::ALL)) value=lagging /></td>
                 <td><Select options=choices(SPEEDS.map(String::from)) value=speed /></td>
@@ -662,6 +712,7 @@ fn PanelChip(panel: PanelInfo) -> impl IntoView {
         }
     });
     let (is_current, click) = (name.clone(), name);
+    let model = panel.model;
 
     view! {
         <div
@@ -669,13 +720,13 @@ fn PanelChip(panel: PanelInfo) -> impl IntoView {
             class:active=move || ctx.panel.get().as_deref() == Some(is_current.as_str())
             on:click=move |_| {
                 ctx.panel.set(Some(click.clone()));
+                ctx.model.set(model);
                 ctx.refresh.update(|n| *n += 1);
             }
         >
             <strong>
                 {panel.name}{panel.hidden.then_some(" (hidden)")}
                 {panel.model.map(|model| {
-                    use am03127_client::config::Model;
                     let (class, title) = match model {
                         Model::Long => ("model long", "Long panel"),
                         Model::Color => ("model color", "Color panel"),
@@ -732,6 +783,7 @@ fn body() -> impl IntoView {
         let first = panels.iter().find(|p| !p.hidden).or(panels.first());
         let first = first.ok_or("panel-config.toml has no panels")?;
         ctx.panel.set(Some(first.name.clone()));
+        ctx.model.set(first.model);
         Ok::<_, String>(panels)
     });
     view! {
@@ -770,6 +822,7 @@ fn App() -> impl IntoView {
         notice: RwSignal::new(None),
         refresh: RwSignal::new(0),
         panel: RwSignal::new(None),
+        model: RwSignal::new(None),
     };
     provide_context(ctx);
 
@@ -795,6 +848,16 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_width_counts_tags() {
+        assert_eq!(text_width(&"M".repeat(20)), panel_width(Some(Model::Long)));
+        assert!(text_width(&"M".repeat(13)) <= panel_width(None));
+        assert!(text_width(&"M".repeat(14)) > panel_width(None));
+        assert_eq!(text_width("<AB>ab<KT>"), 7 * 7);
+        assert_eq!(text_width("<AC>äb<XY>"), 2 * 5);
+        assert_eq!(text_width("<N10>ab"), 16 + 2 * 6);
+    }
 
     #[test]
     fn datetime_local_roundtrip() {
